@@ -164,9 +164,13 @@ cython_debug/
 # ani related 
 audio/
 media/
+videos/
 wip/
 node_modules/
 frames/
 package*.json
 *.mp4
+*.mp3
+*.txt
+*.ppt*
 
