@@ -5,6 +5,20 @@ from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
 import os
 # import json 
 
+def ppt_to_video(meta): 
+    max_size = 4500
+    slide_break = 2 
+    line_break = 0.7
+    fps = 24
+
+    meta['ppt_path'] = 'data/ppt/'
+    meta['voice_path'] = 'data/voice/'
+    meta['image_prefix'] = '슬라이드'
+
+    meta_updated = ppt_to_text(meta, max_size=max_size, slide_break=slide_break, line_break=line_break)
+    timepoints = ppt_tts(meta_updated)
+    create_video_from_ppt_and_voice(meta_updated, timepoints=timepoints, fps=fps)
+
 def ppt_to_text(meta, max_size = 4500, slide_break = 2, line_break = 0.7):
     header = '''<speak>
     '''
