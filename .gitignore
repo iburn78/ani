@@ -173,4 +173,7 @@ package*.json
 *.mp3
 *.txt
 *.ppt*
+ppt/
+images/
+*.json
 
