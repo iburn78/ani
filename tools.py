@@ -1,44 +1,55 @@
 #%%
+from dataclasses import dataclass
 from pptx import Presentation
 from google.cloud import texttospeech_v1beta1 as tts
 from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
 import os
 # import json 
 
-def ppt_to_video(meta): 
-    max_size = 4500
-    slide_break = 2 
-    line_break = 0.7
-    fps = 24
+@dataclass
+class Meta:
+    # PPT settings
+    ppt_file: str 
+    ppt_path: str = 'data/ppt/' # serve as the image path as well
+    image_prefix: str = 'slide' # When onverting PPT slides to images, this is the image file name before numbering.
+    ppt_extension: str = '.pptx'
 
-    meta['ppt_path'] = 'data/ppt/'
-    meta['voice_path'] = 'data/voice/'
-    meta['image_prefix'] = '슬라이드'
+    # google TTS settings
+    google_application_credentials: str = '../config/google_cloud.json' # location of google api keys (downloaded as json)
+    voice_path: str = 'data/voice/'
+    max_size: int = 4500 # for google TTS API, max size limit for one processing is 5,000.
+    slide_break: float = 2 # time break between slides
+    line_break: float = 0.7 # time break when there is line break in the text (e.g., '\n')
+    lang: str = 'E' # choose E for English, K for Korean 
+    wave: bool = False # whether to use wavenet
 
-    meta_updated = ppt_to_text(meta, max_size=max_size, slide_break=slide_break, line_break=line_break)
-    timepoints = ppt_tts(meta_updated)
-    create_video_from_ppt_and_voice(meta_updated, timepoints=timepoints, fps=fps)
+    # moviepy video setting
+    fps: int = 24
 
-def ppt_to_text(meta, max_size = 4500, slide_break = 2, line_break = 0.7):
+def ppt_to_video(meta: Meta): 
+    text_file_number = ppt_to_text(meta)
+    timepoints = ppt_tts(meta, text_file_number)
+    video_from_ppt_voice(meta, timepoints)
+
+def ppt_to_text(meta: Meta):
     header = '''<speak>
     '''
     footer = '''<break time="1s"/>
     </speak>
     '''
-    
     file_number = 0
     current_size = _write_to_file(header, file_number, 0, meta)
-    ppt = Presentation(os.path.join(meta['ppt_path'], meta['ppt_file']))
+    ppt = Presentation(os.path.join(meta.ppt_path, meta.ppt_file))
     
     for slide_number, slide in enumerate(ppt.slides):
         if slide.notes_slide and slide.notes_slide.notes_text_frame:
             notes = slide.notes_slide.notes_text_frame.text
-            slide_content = f'.<mark name="slide{slide_number}"/>.\n<break time="{round(slide_break/2,1)}s"/>\n'
-            slide_content += notes.replace('\n', f'<break time="{line_break}s"/>\n') + f'<break time="{slide_break}s"/>\n'
+            slide_content = f'.<mark name="slide{slide_number}"/>.\n<break time="{round(meta.slide_break/2,1)}s"/>\n'
+            slide_content += notes.replace('\n', f'<break time="{meta.line_break}s"/>\n') + f'<break time="{meta.slide_break}s"/>\n'
         else:
-            slide_content = f'.<mark name="slide{slide_number}"/>.\n<break time="{slide_break}s"/>\n'
+            slide_content = f'.<mark name="slide{slide_number}"/>.\n<break time="{meta.slide_break}s"/>\n'
 
-        if current_size + len(slide_content.encode('utf-8')) > max_size:
+        if current_size + len(slide_content.encode('utf-8')) > meta.max_size:
             _write_to_file(footer, file_number, current_size, meta)
             file_number += 1
             current_size = 0
@@ -47,16 +58,12 @@ def ppt_to_text(meta, max_size = 4500, slide_break = 2, line_break = 0.7):
         current_size = _write_to_file(slide_content, file_number, current_size, meta)
 
     _write_to_file(footer, file_number, current_size, meta)
+    txt_file_number = file_number+1
 
-    meta_file = os.path.join(meta['ppt_path'], 'meta.json')
-    meta['txt_file_number'] = file_number+1
-    # with open(meta_file, 'w', encoding='utf-8') as meta_json:
-    #     json.dump(meta, meta_json, ensure_ascii=False, indent=4)
+    return txt_file_number
 
-    return meta
-
-def _write_to_file(content, current_file_number, current_size, meta):
-    txt_file = f"{os.path.join(meta['voice_path'], meta['ppt_file'].replace('.pptx', ''))}_{current_file_number}.txt"
+def _write_to_file(content, current_file_number, current_size, meta: Meta):
+    txt_file = f"{os.path.join(meta.voice_path, meta.ppt_file.replace(meta.ppt_extension, ''))}_{current_file_number}.txt"
 
     mode = 'w' if current_size == 0 else 'a'
     with open(txt_file, mode, encoding='utf-8') as notes_file:
@@ -64,24 +71,23 @@ def _write_to_file(content, current_file_number, current_size, meta):
     
     return current_size + len(content.encode('utf-8'))
 
-def ppt_tts(meta):
-    ppt_file = os.path.join(meta['ppt_path'], meta['ppt_file'])
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = '../config/google_cloud.json'
+def ppt_tts(meta: Meta, txt_file_number: int):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = meta.google_application_credentials
 
     client = tts.TextToSpeechClient()
-    language_code = 'ko-KR' if meta['lang'] == 'K' else 'en-US' 
-    tag = 'D' if meta['lang'] == 'K' else 'B' 
+    language_code = 'ko-KR' if meta.lang == 'K' else 'en-US' 
+    tag = 'D' if meta.lang == 'K' else 'B' 
     name = language_code+'-Wavenet-'+tag 
-    if meta['wave'] == True: # WaveNet voice (1 mil words/month vs 4 mil in basic)
+    if meta.wave == True: # WaveNet voice (1 mil words/month vs 4 mil in basic)
         voice = tts.VoiceSelectionParams(language_code=language_code, name=name, ssml_gender=tts.SsmlVoiceGender.MALE)
     else:
         voice = tts.VoiceSelectionParams(language_code=language_code, ssml_gender=tts.SsmlVoiceGender.MALE)
     audio_config = tts.AudioConfig(audio_encoding=tts.AudioEncoding.MP3)
     
     timepoint_dict = {}
-    for i in range(meta['txt_file_number']):
-        txt_file = f"{os.path.join(meta['voice_path'], meta['ppt_file'].replace('.pptx', '_'+str(i)+'.txt'))}"
-        voice_file =ppt_file.replace('/ppt/','/voice/').replace('.pptx', '_'+str(i)+'.mp3')
+    for i in range(txt_file_number):
+        txt_file = f"{os.path.join(meta.voice_path, meta.ppt_file.replace(meta.ppt_extension, '_'+str(i)+'.txt'))}"
+        voice_file =os.path.join(meta.voice_path, meta.ppt_file.replace(meta.ppt_extension, '_'+str(i)+'.mp3'))
 
         with open(txt_file, 'r', encoding='utf-8') as file:
             text_content = file.read()
@@ -108,16 +114,11 @@ def ppt_tts(meta):
             print('No timepoints found.')
         timepoint_dict[voice_file] = timepoint_list
 
-    # tps_file = os.path.join(meta['voice_path'], 'timepoints.json')
-    # with open(tps_file, 'w', encoding='utf-8') as timepoints_json:
-    #     json.dump(timepoint_dict, timepoints_json, ensure_ascii=False, indent=4)
-
     return timepoint_dict
 
-def create_video_from_ppt_and_voice(meta, timepoints, fps=24):
-    images_folder = os.path.join(meta['ppt_path'], meta['ppt_file'].replace('.pptx',''))
-    output_file = os.path.join(meta['ppt_path'], meta['ppt_file'].replace('.pptx', '.mp4'))
-    image_prefix = meta['image_prefix']
+def video_from_ppt_voice(meta: Meta, timepoints, fps=24):
+    images_path = os.path.join(meta.ppt_path, meta.ppt_file.replace(meta.ppt_extension,''))
+    output_file = os.path.join(meta.ppt_path, meta.ppt_file.replace(meta.ppt_extension, '.mp4'))
     video_with_audios = []
 
     for audio_file, slide_times in timepoints.items():
@@ -133,8 +134,8 @@ def create_video_from_ppt_and_voice(meta, timepoints, fps=24):
             slide_number = slide_times[i][0]
 
             # Construct the image filename
-            slide_image_filename = f'{image_prefix}{slide_number}.PNG'
-            slide_image_path = os.path.join(images_folder, slide_image_filename)
+            slide_image_filename = f'{meta.image_prefix}{slide_number}.PNG'
+            slide_image_path = os.path.join(images_path, slide_image_filename)
 
             # Load the slide image
             slide_clip = ImageClip(slide_image_path).set_duration(end_time - start_time).set_start(start_time)
