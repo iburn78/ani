@@ -1,23 +1,28 @@
 #%% 
 from openai import OpenAI
 from ppt2video.tools import *
+import google_auth_oauthlib.flow
+import googleapiclient.discovery
+import googleapiclient.errors
 import json
 import os
 import shutil
 
-CONF_FILE = '../config/config.json'
-CLIENT_SECRETS_FILE = "../config/google_client.json"
-
-def _translate_text(input_text, conf_file, ssml=True):
+def _translate_text(input_text, conf_file, type='ssml'):
     with open(conf_file, 'r') as json_file:
         config = json.load(json_file)
         api_key = config['openai']
 
     client = OpenAI(api_key=api_key)
-    if ssml: 
+    if type=='ssml': 
         content_command = "The following text is in SSML format. Please translate the content to English while preserving the SSML tags:\n\n"
-    else: 
-        content_command = "The following text is a title or short description of a YouTube video. Please translate it into English concisely so that it fits as a title or short description:\n\n"
+    elif type=='title': 
+        content_command = "The following text is a title of a YouTube video. Please translate it into English concisely so that it fits as a title and don't put quotation marks in the result:\n\n"
+    elif type=='desc':
+        content_command = "The following text is a short description of a YouTube video. Please translate it into English concisely so that it fits as a short description. For hastags, translate them as well, leave the # marks, and put them in front of the result as in the original text:\n\n"
+    else:
+        content_command = "ERROR"
+
     chat_completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -31,7 +36,7 @@ def _translate_text(input_text, conf_file, ssml=True):
     )
     return chat_completion.choices[0].message.content
 
-def gen_Eng_notes_from_Korean(meta: Meta):
+def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
     num = ppt_to_text(meta)
 
     for n in range(num):
@@ -42,7 +47,7 @@ def gen_Eng_notes_from_Korean(meta: Meta):
         with open(txt_file, 'r', encoding='utf-8') as file:
             ssml_content = file.read()
 
-        translated_text = _translate_text(ssml_content, CONF_FILE)
+        translated_text = _translate_text(ssml_content, conf_file, 'ssml')
 
         with open(txt_file, 'w') as file:
             file.write(translated_text)
@@ -51,26 +56,17 @@ def gen_Eng_notes_from_Korean(meta: Meta):
 
     return num
 
-def translate_title_desc(title, desc): 
-    translated_title = _translate_text(title)
-    translated_desc = _translate_text(desc)
+def translate_title_desc(title, desc, conf_file): 
+    translated_title = _translate_text(title, conf_file, 'title')
+    translated_desc = _translate_text(desc, conf_file, 'desc')
     return translated_title, translated_desc
 
 
-#%% 
-# Upload part
-
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
-import googleapiclient.errors
-
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-CATEGORY_ID = "27" # education
-
-def upload_video(meta: Meta, title, desc, keywords, category_id = CATEGORY_ID):
+def upload_video(meta: Meta, title, desc, keywords, category_id = '27', client_secrets_file = None): # '27': education
+    SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
     # Get credentials and create an API client
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, SCOPES)
+        client_secrets_file, SCOPES)
     credentials = flow.run_local_server(port=0)
     
     youtube = googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
