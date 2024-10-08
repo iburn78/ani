@@ -4,6 +4,7 @@ from ppt2video.tools import *
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
+from googleapiclient.http import MediaFileUpload
 import json
 import os
 import shutil
@@ -62,7 +63,7 @@ def translate_title_desc(title, desc, conf_file):
     return translated_title, translated_desc
 
 
-def upload_video(meta: Meta, title, desc, keywords, category_id = '27', client_secrets_file = None): # '27': education
+def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, category_id = '27', client_secrets_file = None): # '27': education
     SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
     # Get credentials and create an API client
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
@@ -72,6 +73,7 @@ def upload_video(meta: Meta, title, desc, keywords, category_id = '27', client_s
     youtube = googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
 
     # Call the YouTube API to upload the video
+    video_file_path = os.path.join(meta.ppt_path, meta.ppt_file.replace('.pptx','.mp4'))
     request = youtube.videos().insert(
         part="snippet,status",
         body={
@@ -82,12 +84,23 @@ def upload_video(meta: Meta, title, desc, keywords, category_id = '27', client_s
                 "categoryId": category_id
             },
             "status": {
-                "privacyStatus": "public"  # 'public', 'private' or 'unlisted'
+                "privacyStatus": "public"  # 'public', 'private', or 'unlisted'
             }
         },
-        media_body=os.path.join(meta.ppt_path, meta.ppt_file.replace('.pptx','.mp4'))
+        media_body=MediaFileUpload(video_file_path)
     )
     
     response = request.execute()
     print(f"Video uploaded! Video ID: {response['id']}")
 
+    # Upload the thumbnail after the video is uploaded
+    # Thumbnail upload seems only working for non-shorts
+    if thumbnail_file != None: 
+        thumbnail_path = os.path.join(meta.ppt_path, thumbnail_file)
+        request = youtube.thumbnails().set(
+            videoId=response['id'],
+            media_body=MediaFileUpload(thumbnail_path)
+        )
+    
+        thumbnail_response = request.execute()
+        print(f"Thumbnail uploaded! Status: {thumbnail_response}")
