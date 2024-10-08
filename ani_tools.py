@@ -85,7 +85,7 @@ def upload_video(meta: Meta, title, desc, keywords, category_id = '27', client_s
                 "privacyStatus": "public"  # 'public', 'private' or 'unlisted'
             }
         },
-        media_body=os.path.join(meta.ppt_path, meta.ppt_file)
+        media_body=os.path.join(meta.ppt_path, meta.ppt_file.replace('.pptx','.mp4'))
     )
     
     response = request.execute()
