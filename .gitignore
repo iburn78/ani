@@ -176,4 +176,7 @@ package*.json
 ppt/
 images/
 *.json
-
+video/
+voice/
+image/
+data/

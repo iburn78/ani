@@ -50,7 +50,7 @@ def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
 
         translated_text = _translate_text(ssml_content, conf_file, 'ssml')
 
-        with open(txt_file, 'w') as file:
+        with open(txt_file, 'w', encoding='utf-8') as file:
             file.write(translated_text)
 
         print(f"Translated text for file {n}: {translated_text}")
