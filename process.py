@@ -9,13 +9,13 @@ CONF_FILE = '../config/config.json'
 CLIENT_SECRETS_FILE = "../config/google_client.json"
 
 # ------------------------------------------------
-k_ppt_file = '배터리3사_K_2024-10-23_shorts.pptx'
-k_title = '오늘 급등한 배터리 관련주들, 그간 주가 추이 비교해보면?'
+k_ppt_file = '현대차_K_2024-10-24_shorts.pptx'
+k_title = '인도에서 대박친 현대차, 실적 Review!'
 k_desc = '''
-#LG에너지솔루션 #삼성SDI #SK이노베이션 #Price
-배터리3사 주가를 한번 비교해 보겠습니다. 단순 비교이지만, Macro를 봐야 하는지 Micro를 봐야 하는지 고민이 깊어집니다.
+#현대자동차 #인도IPO #PER
+인도에서 최대 상장으로 대박친 현대자동차, 그간 실적 추이와 Value 측면에서 Review 해 보겠습니다.
 '''
-k_keywords = ['Battery', 'Price', 'Macro', 'Micro']
+k_keywords = ['Hyundai Motors', 'India IPO', 'PER']
 
 e_ppt_file = k_ppt_file.replace('_K_', '_E_')
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
@@ -33,13 +33,13 @@ e_keywords = k_keywords
 # ✓ Generate Korean Video with Voice
 # ------------------------------------------------
 k_meta = Meta(ppt_file=k_ppt_file, image_prefix='슬라이드', google_application_credentials=GCA, lang='K',
-    # fade_after_slide=[0, 1, 3, 4, 5, 6],
+    fade_after_slide=[0, 1, 2, 3, 4, 5, 6],
     # convert_slides_upto_slide_no=0, 
-    target_slide_for_video = [2, ],
-    video_file_path = ['ani.mp4', ], 
-    video_height_scale = [0.45, ], 
-    video_location = [(50, 260), ], # list of (x,y)
-    video_interrupt = True, 
+    # target_slide_for_video = [2, ],
+    # video_file_path = ['ani.mp4', ], 
+    # video_height_scale = [0.45, ], 
+    # video_location = [(50, 260), ], # list of (x,y)
+    # video_interrupt = True, 
     )
 ppt_to_video(k_meta)
 
@@ -49,13 +49,13 @@ ppt_to_video(k_meta)
 e_meta = Meta(
     ppt_file=e_ppt_file, image_prefix='슬라이드', google_application_credentials=GCA, lang='E', 
     convert_slides_upto_slide_no=0, 
-    # fade_after_slide=[0, 1, 3, 4, 5, 6],
+    fade_after_slide=[0, 1, 2, 3, 4, 5, 6],
     speaking_rate_EN=1.10, 
-    target_slide_for_video = [2, ],
-    video_file_path = ['ani.mp4', ], 
-    video_height_scale = [0.45, ], 
-    video_location = [(50, 260), ], # list of (x,y)
-    video_interrupt = True, 
+    # target_slide_for_video = [2, ],
+    # video_file_path = ['ani.mp4', ], 
+    # video_height_scale = [0.45, ], 
+    # video_location = [(50, 260), ], # list of (x,y)
+    # video_interrupt = True, 
     )
 num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 #%% 
