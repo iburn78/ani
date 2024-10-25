@@ -9,13 +9,13 @@ CONF_FILE = '../config/config.json'
 CLIENT_SECRETS_FILE = "../config/google_client.json"
 
 # ------------------------------------------------
-k_ppt_file = '현대차_K_2024-10-24_shorts.pptx'
-k_title = '인도에서 대박친 현대차, 실적 Review!'
+k_ppt_file = 'SK하이닉스_K_2024-10-25_shorts.pptx'
+k_title = 'SK하이닉스 3분기 실적 발표 - Earning Surprise!!'
 k_desc = '''
-#현대자동차 #인도IPO #PER
-인도에서 최대 상장으로 대박친 현대자동차, 그간 실적 추이와 Value 측면에서 Review 해 보겠습니다.
+#SK하이닉스 #삼성전자 #어닝서프라이즈
+SK하이닉스의 3분기 실적 발표가 있었습니다. 최대 호황이라고 해도 과언이 아닌데, 삼성전자와 극명히 비교됩니다. 같이 살펴보시죠!
 '''
-k_keywords = ['Hyundai Motors', 'India IPO', 'PER']
+k_keywords = ['SK Hynix', '2024 3Q', 'Quaterly Performance']
 
 e_ppt_file = k_ppt_file.replace('_K_', '_E_')
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
@@ -35,10 +35,10 @@ e_keywords = k_keywords
 k_meta = Meta(ppt_file=k_ppt_file, image_prefix='슬라이드', google_application_credentials=GCA, lang='K',
     fade_after_slide=[0, 1, 2, 3, 4, 5, 6],
     # convert_slides_upto_slide_no=0, 
-    # target_slide_for_video = [2, ],
-    # video_file_path = ['ani.mp4', ], 
-    # video_height_scale = [0.45, ], 
-    # video_location = [(50, 260), ], # list of (x,y)
+    target_slide_for_video = [5, ],
+    video_file_path = ['ani.mp4', ], 
+    video_height_scale = [0.50, ], 
+    video_location = [(50, 260), ], # list of (x,y)
     # video_interrupt = True, 
     )
 ppt_to_video(k_meta)
@@ -50,17 +50,18 @@ e_meta = Meta(
     ppt_file=e_ppt_file, image_prefix='슬라이드', google_application_credentials=GCA, lang='E', 
     convert_slides_upto_slide_no=0, 
     fade_after_slide=[0, 1, 2, 3, 4, 5, 6],
-    speaking_rate_EN=1.10, 
-    # target_slide_for_video = [2, ],
-    # video_file_path = ['ani.mp4', ], 
-    # video_height_scale = [0.45, ], 
-    # video_location = [(50, 260), ], # list of (x,y)
+    speaking_rate_EN=1.15, 
+    target_slide_for_video = [5, ],
+    video_file_path = ['ani.mp4', ], 
+    video_height_scale = [0.50, ], 
+    video_location = [(50, 260), ], # list of (x,y)
     # video_interrupt = True, 
     )
-num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
+# num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 #%% 
 # if needed modify the script here.
 #%% 
+num=1
 timepoints = ppt_tts(e_meta, num)
 # video_from_ppt_and_voice(e_meta, timepoints)
 composite_video_from_ppt_and_voice(e_meta, timepoints)
