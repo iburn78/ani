@@ -63,8 +63,13 @@ def translate_title_desc(title, desc, conf_file):
     return translated_title, translated_desc
 
 
-def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, category_id = '27', client_secrets_file = None): # '27': education
-    SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, category_id = '27', client_secrets_file = None, playlist_id = None): # '27': education
+    # SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+    SCOPES = [
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube"
+    ]
     # Get credentials and create an API client
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
         client_secrets_file, SCOPES)
@@ -91,7 +96,8 @@ def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, categor
     )
     
     response = request.execute()
-    print(f"Video uploaded! Video ID: {response['id']}")
+    video_id = response['id']
+    print(f"Video uploaded! Video ID: {video_id}")
 
     # Upload the thumbnail after the video is uploaded
     # Thumbnail upload seems only working for non-shorts
@@ -104,3 +110,55 @@ def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, categor
     
         thumbnail_response = request.execute()
         print(f"Thumbnail uploaded! Status: {thumbnail_response}")
+    
+    if playlist_id != None: 
+        request = youtube.playlistItems().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "playlistId": playlist_id,
+                    "resourceId": {
+                        "kind": "youtube#video",
+                        "videoId": video_id
+                    }
+                }
+            }
+        )
+        response = request.execute()
+        print(f"Video added to playlist {playlist_id}")
+
+
+def get_ids(client_secrets_file):
+    SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        client_secrets_file, SCOPES)
+    credentials = flow.run_local_server(port=0)
+    
+    youtube = googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
+    
+    request = youtube.channels().list(
+        part="id",
+        mine=True
+    )
+    response = request.execute()
+    
+    # Extract the channel ID
+    channel_id = response["items"][0]["id"]
+
+    request = youtube.playlists().list(
+        part="snippet",
+        channelId=channel_id,
+        maxResults=25  # Adjust as needed
+    )
+    response = request.execute()
+    
+    # Extract playlist IDs and titles
+    playlists = [(item['id'], item['snippet']['title']) for item in response.get('items', [])]
+    return channel_id, playlists
+
+# CLIENT_SECRETS_FILE = "../config/google_client.json"
+# channel_id, playlists = get_ids(CLIENT_SECRETS_FILE)
+# print(f"Channel ID: {channel_id}")
+
+# for playlist_id, title in playlists:
+#     print(f"Playlist ID: {playlist_id}, Title: {title}")
