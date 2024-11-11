@@ -4,6 +4,16 @@ import pandas as pd
 from PIL import Image
 import os
 
+class db_to_ppt:
+
+    def __init__(self, )
+pptx_filename = '삼성전자_K_2024-11-08_shorts_13sec.pptx'
+
+working_dir = 'data/ppt/'
+blank_filename = 'blank.pptx'
+content_db_filename = 'content_db.xlsx'
+
+
 
 def replace_shape_text(shape, new_text):
     if not shape.has_text_frame:
@@ -83,11 +93,6 @@ def make_square_img(image_path, fill_color=(255, 255, 255, 0)):
         new_img.paste(img, ((new_size - width) // 2, (new_size - height) // 2))
         new_img.save(image_path)
 
-pptx_filename = '삼성전자_K_2024-11-08_shorts_13sec.pptx'
-
-working_dir = 'data/ppt/'
-blank_filename = 'blank.pptx'
-content_db_filename = 'content_db.xlsx'
 
 blank_path = os.path.join(working_dir, blank_filename)
 content_db_path = os.path.join(working_dir, content_db_filename)

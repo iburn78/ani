@@ -10,20 +10,19 @@ CLIENT_SECRETS_FILE = "../config/google_client.json"
 YOUTUBE_CONF = '../config/youtube_conf.json'
 
 # ------------------------------------------------
-k_ppt_file = '트럼프당선후지수변화_K_2024-11-08_shorts'
+k_ppt_file = '트럼프_국제정세변화_K_2024-11-11_shorts'
 k_title = '13초컷 - 삼성바이오로직스 3분기 실적!'
-k_title = '트럼프 당선 직후 미국과 한국의 주식시장 방향 변화 분석, 기타 주요국은?'
+k_title = '트럼프에 따른 국제정세 변화 정리! 변화가 엄청 빠르게 일어나고 있습니다.'
 k_desc = '''
-#트럼프 #주식시장 #영향
-트럼프 당선 직후 미국은 시장이 사상 최고가를 경신중이라는데, 우리나라와 비교하면 어떠한지, 그리고 일본, 홍콩, 영국등 주요국은 어떠했는지 살펴보겠습니다.
+#트럼프 #국제정세 #변화 #전쟁 #중국 #러시아 #멕시코 #유럽 #중동 #머스크
+트럼프 당선에 따라 국제정세 변화가 매우 빠르게 일어나고 있습니다. 나라 및 지역별로 어떤 상황이 전개될것 같은지, 살펴 보겠습니다.
 '''
-k_keywords = ['Trump', 'Stock Index', 'US vs Korea', 'Quaterly Performance']
+k_keywords = ['Trump', 'International policies', 'International affairs', 'Musk', 'Ukraine War', 'China', 'Russia', 'Tariff', 'Quaterly Performance']
 
 e_ppt_file = k_ppt_file.replace('_K_', '_E_')
 e_ppt_file = (e_ppt_file if e_ppt_file.endswith('.pptx') else e_ppt_file + '.pptx')
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
 # titles should not be too long
-#%%
 print(e_title)
 print(e_desc)
 
@@ -41,12 +40,12 @@ k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GCA, lang='K',
     # slide_break=0.1, 
     # line_break=0.1,
     # speaking_rate_KR=1.3, 
-    fade_after_slide=[0, 2, 4, 6], 
+    fade_after_slide=[0, 1, 2, 3, 4, 5, 6, 7],
     # convert_slides_upto_slide_no=0, 
-    target_slide_for_video = [1, 3, 5],
-    video_file_path = ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4' ], 
-    video_height_scale = [0.45, 0.45, 0.45], 
-    video_location = [(40, 260), (40, 260), (40, 260)], # list of (x,y)
+    # target_slide_for_video = [1, 3, 5],
+    # video_file_path = ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4' ], 
+    # video_height_scale = [0.45, 0.45, 0.45], 
+    # video_location = [(40, 260), (40, 260), (40, 260)], # list of (x,y)
     # video_interrupt = True, 
     )
 ppt_to_video(k_meta)
@@ -59,12 +58,12 @@ e_meta = Meta(
     # slide_break=0.1, 
     # line_break=0.1,
     # convert_slides_upto_slide_no=0, 
-    fade_after_slide=[0, 2, 4, 6], 
+    fade_after_slide=[0, 1, 2, 3, 4, 5, 6, 7], 
     # speaking_rate_EN=1.3, 
-    target_slide_for_video = [1, 3, 5],
-    video_file_path = ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4' ], 
-    video_height_scale = [0.45, 0.45, 0.45], 
-    video_location = [(40, 260), (40, 260), (40, 260)], # list of (x,y)
+    # target_slide_for_video = [1, 3, 5],
+    # video_file_path = ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4' ], 
+    # video_height_scale = [0.45, 0.45, 0.45], 
+    # video_location = [(40, 260), (40, 260), (40, 260)], # list of (x,y)
     # video_interrupt = True, 
     )
 num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
