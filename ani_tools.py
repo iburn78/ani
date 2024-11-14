@@ -7,7 +7,6 @@ import googleapiclient.errors
 from googleapiclient.http import MediaFileUpload
 import json
 import os
-import shutil
 
 def _translate_text(input_text, conf_file, type='ssml'):
     with open(conf_file, 'r') as json_file:
@@ -42,8 +41,6 @@ def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
 
     for n in range(num):
         txt_file = f"{os.path.join(meta.voice_path, meta.ppt_file.replace(meta.ppt_extension, '_' + str(n) + '.txt'))}"
-        backup_file = txt_file.replace(".txt", "_backup.txt")
-        shutil.copy(txt_file, backup_file)
 
         with open(txt_file, 'r', encoding='utf-8') as file:
             ssml_content = file.read()

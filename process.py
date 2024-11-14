@@ -10,17 +10,18 @@ CLIENT_SECRETS_FILE = "../config/google_client.json"
 YOUTUBE_CONF = '../config/youtube_conf.json'
 
 # ------------------------------------------------
-k_ppt_file = '트럼프_국제정세변화_K_2024-11-11_shorts'
+k_ppt_file = '3분기실적분석_K_2024-11-13_shorts'
 k_title = '13초컷 - 삼성바이오로직스 3분기 실적!'
-k_title = '트럼프에 따른 국제정세 변화 정리! 변화가 엄청 빠르게 일어나고 있습니다.'
+k_title = '2024년 3분기 상장사 실적 분석 - 오늘까지 발표된것 총정리!'
 k_desc = '''
-#트럼프 #국제정세 #변화 #전쟁 #중국 #러시아 #멕시코 #유럽 #중동 #머스크
-트럼프 당선에 따라 국제정세 변화가 매우 빠르게 일어나고 있습니다. 나라 및 지역별로 어떤 상황이 전개될것 같은지, 살펴 보겠습니다.
+#2024 #3Q #Quarterly #Performance #총정리 #어닝쇼크 #어닝서프라이즈
+2024년 3분기 실적 발표 시즌입니다. 오늘까지 발표된 3Q 실적을 어닝서프라이즈 및 어닝쇼크, 그리고 섹터별로 분석해 보았습니다. 
 '''
-k_keywords = ['Trump', 'International policies', 'International affairs', 'Musk', 'Ukraine War', 'China', 'Russia', 'Tariff', 'Quaterly Performance']
+k_keywords = ['KOSPI', 'KOSDAQ', 'EarningShock', 'EarningSurprise', '2024', '3Q', 'Quaterly Performance']
 
 e_ppt_file = k_ppt_file.replace('_K_', '_E_')
 e_ppt_file = (e_ppt_file if e_ppt_file.endswith('.pptx') else e_ppt_file + '.pptx')
+#%% 
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
 # titles should not be too long
 print(e_title)
@@ -71,7 +72,7 @@ num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 # if needed modify the script here.
 #%% 
 timepoints = ppt_tts(e_meta, num)
-save_ppt_as_images(e_meta)
+# save_ppt_as_images(e_meta)
 # video_from_ppt_and_voice(e_meta, timepoints)
 composite_video_from_ppt_and_voice(e_meta, timepoints)
 
@@ -90,6 +91,12 @@ upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file,
 # ✓ Upload English 
 # ------------------------------------------------
 #%% 
+e_title = 'Q3 2024 Earnings Analysis of Listed Companies in Korea - Summary of Announced Results'
+e_desc = '''
+#2024 #3Q #Quarterly #Performance #Summary #EarningsShock #EarningsSurprise  
+It's the earnings season for Q3 2024, Korea. We analyzed the Q3 results announced so far, focusing on earnings surprises, earnings shocks, and sector performance.
+'''
+e_keywords = ['KOSPI', 'KOSDAQ', 'EarningShock', 'EarningSurprise', '2024', '3Q', 'Quaterly Performance']
 with open(YOUTUBE_CONF, 'r') as json_file:
     config = json.load(json_file)
 thumbnail_file = None
