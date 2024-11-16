@@ -41,25 +41,25 @@ if type_of_video == 2:
 # 1: vertical shorts
 # 2: 13 sec series
 # ------------------------------------------------
-type_of_video = 1 
+type_of_video = 0 
 
-k_ppt_file = '트리플약세_K_2024-11-15_shorts'
-k_title = '한국은 현재 트리플 약세... 얼마나 지속될까?'
+k_ppt_file = '경과요약_K_2024-11-16'
+k_title = '트럼프 당선이후 핵심 이슈 경과 요약!'
 k_desc = '''
-#트리플강세 #트리플약세 #주식 #채권 #환율 #Cycle #트럼프 #양극화
-트럼프 당선 이후, 미국은 트리플 강세를 보이고, 한국은 트리플 약세를 보이고 있습니다. 극단적인 양극화가 순식간에 발생해 버렸습니다. 한번 살펴보겠습니다.
+#트럼프 #삼성전자 #배터리 #2차전지 #양극화
+트럼프 당선이후 많은 경제 이슈들을 쇼츠로 전달 드렸는데, 오늘은 그중에 몇개에 대해서 진행 경과를 간단히 요약해서 종합해 보았습니다.
 '''
-k_keywords = ['Triple strength', 'Triple weakness', 'Trump', 'Quaterly Performance']
-fade_after_slide=[0, 1, 2, 3, 4, 5, 6, 7],
+k_keywords = ['Trump', 'Developments', 'SamsungElectronics', 'Battery', 'Polarization', 'Quaterly Performance']
+fade_after_slide=[0, 1, 2, 3, 5, 8, 9, 10, 12, 13, 14, 15, 17, 18]
 
 # ------------------------------------------------
-video_param = {
-    "target_slide_for_video": [1, 3, 5],
-    "video_file_path": ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4'],
-    "video_height_scale": [0.45, 0.45, 0.45],
-    "video_location": [(40, 260), (40, 260), (40, 260)],  # list of (x, y)
-    "video_interrupt": True,
-}
+# video_param = {
+#     "target_slide_for_video": [1, 3, 5],
+#     "video_file_path": ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4'],
+#     "video_height_scale": [0.45, 0.45, 0.45],
+#     "video_location": [(40, 260), (40, 260), (40, 260)],  # list of (x, y)
+#     "video_interrupt": True,
+# }
 video_param = {}
 
 # ------------------------------------------------
@@ -109,6 +109,8 @@ num = ppt_to_text(k_meta)
 # ------------------------------------------------
 
 timepoints = ppt_tts(k_meta, num)
+# print(timepoints)
+# may check . after mark tag: add it manually or programmatically afterwards
 composite_video_from_ppt_and_voice(k_meta, timepoints)
 
 #%% ----------------------------------------------
@@ -134,7 +136,7 @@ e_meta = Meta(
     **speaking_rate_param,
     **video_param,
     )
-num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
+# num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 save_ppt_as_images(e_meta)
 
 #%% ----------------------------------------------
@@ -143,6 +145,8 @@ save_ppt_as_images(e_meta)
 
 #%% ----------------------------------------------
 timepoints = ppt_tts(e_meta, num)
+# print(timepoints)
+# may check . after mark tag: add it manually or programmatically afterwards
 composite_video_from_ppt_and_voice(e_meta, timepoints)
 
 #%% ----------------------------------------------
@@ -150,9 +154,12 @@ e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
 e_keywords = k_keywords
 print(e_title)
 print(e_desc)
-# e_title = ''
-# e_desc = '''
-# '''
+#%% 
+e_title = 'Summary of the Developments on the Key Issues Since Trump Election'
+e_desc = '''
+#Trump #Samsung #Battery #Polarization  
+Since Trump's election, We've covered many economic issues using Youtube Shorts. Today, let us summarize the developments on the issues so far.
+'''
 
 #%% ----------------------------------------------
 upload_video(e_meta, e_title, e_desc, e_keywords, thumbnail_file=thumbnail_file_e, client_secrets_file=CLIENT_SECRETS_FILE, playlist_id=playlist_id_it)

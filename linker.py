@@ -7,11 +7,11 @@ v_path = 'data/video/'
 videos = sorted([f for f in os.listdir(v_path) if os.path.isfile(os.path.join(v_path, f))])
 
 clips = []
-clips.append(VideoFileClip(os.path.join(v_path, videos[0])).subclip(0, 121))
-clips.append(VideoFileClip(os.path.join(v_path, videos[1])).subclip(0, 23))
-clips.append(VideoFileClip(os.path.join(v_path, videos[2])).subclip(0, 41))
-clips.append(VideoFileClip(os.path.join(v_path, videos[3])).subclip(1.5, 35))
-clips.append(VideoFileClip(os.path.join(v_path, videos[4])))
+clips.append(VideoFileClip(os.path.join(v_path, videos[0])).subclip(0, 74))
+clips.append(VideoFileClip(os.path.join(v_path, videos[1])))
+# clips.append(VideoFileClip(os.path.join(v_path, videos[1])).subclip(0, 23))
+# clips.append(VideoFileClip(os.path.join(v_path, videos[2])).subclip(0, 41))
+# clips.append(VideoFileClip(os.path.join(v_path, videos[3])).subclip(1.5, 35))
 # clips.append(VideoFileClip(os.path.join(v_path, videos[0])).subclip(1, VideoFileClip(videos[1]).duration)) 
 
 final_video = concatenate_videoclips(clips)
