@@ -9,50 +9,24 @@ CONF_FILE = '../config/config.json'
 CLIENT_SECRETS_FILE = "../config/google_client.json"
 YOUTUBE_CONF = '../config/youtube_conf.json'
 
-var_setting_block = '''
-k_ppt_file = k_ppt_file.replace('.pptx', '')+'.pptx'
-e_ppt_file = k_ppt_file.replace('_K_', '_E_')
-thumbnail_file_k = None
-thumbnail_file_e = None
-playlist_id_qp = None
-playlist_id_it = None
-speaking_rate_KR = 1.2 # Korean
-speaking_rate_EN = 1.1 # English 
-speaking_rate_param = {}
-
-if type_of_video == 0: 
-    thumbnail_file_k = os.path.join(f"{k_ppt_file.replace('.pptx', '')}", "slide0.png")
-    thumbnail_file_e = os.path.join(f"{e_ppt_file.replace('.pptx', '')}", "slide0.png")
-
-if type_of_video == 2: 
-    k_title = '13초컷 - ' + k_title
-    with open(YOUTUBE_CONF, 'r') as json_file:
-        config = json.load(json_file)
-        playlist_id_qp = config["qp_quick_update_playlist_id"]
-        playlist_id_it = config["it_quick_update_playlist_id"]
-    speaking_rate_param = {
-        'slide_break': 0.1, 
-        'line_break': 0.1,
-    }
-'''
-
 # ------------------------------------------------
 # 0: wide videos
 # 1: vertical shorts
 # 2: 13 sec series
 # ------------------------------------------------
-type_of_video = 0 
+type_of_video = 1 
 
-k_ppt_file = '경과요약_K_2024-11-16'
-k_title = '트럼프 당선이후 핵심 이슈 경과 요약!'
+k_ppt_file = '3분기실적_K_2024-11-19_shorts'
+k_title = '코스피 상장사 3분기 실적 분석 및 해석!'
 k_desc = '''
-#트럼프 #삼성전자 #배터리 #2차전지 #양극화
-트럼프 당선이후 많은 경제 이슈들을 쇼츠로 전달 드렸는데, 오늘은 그중에 몇개에 대해서 진행 경과를 간단히 요약해서 종합해 보았습니다.
+#3분기 #KOSPI #실적분석 #해석 #불확실성
+코스피 상장사들이 놀랍게도 3분기까지 누적실적에서 역대 최고치를 달성했습니다. 작년 대비해서 실적 개선이 엄청나게 이루어 졌는데, 피부로 느껴지는 경기는 너무 좋지 않습니다. 한번 살펴보았습니다.
 '''
-k_keywords = ['Trump', 'Developments', 'SamsungElectronics', 'Battery', 'Polarization', 'Quaterly Performance']
-fade_after_slide=[0, 1, 2, 3, 5, 8, 9, 10, 12, 13, 14, 15, 17, 18]
+k_keywords = ['3Q', 'KOSPI', 'Uncertainties', 'Quaterly Performance']
+fade_after_slide=[0, 1, 2, 3, 5, 6, 7]
 
 # ------------------------------------------------
+video_param = {}
 # video_param = {
 #     "target_slide_for_video": [1, 3, 5],
 #     "video_file_path": ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4'],
@@ -60,7 +34,6 @@ fade_after_slide=[0, 1, 2, 3, 5, 8, 9, 10, 12, 13, 14, 15, 17, 18]
 #     "video_location": [(40, 260), (40, 260), (40, 260)],  # list of (x, y)
 #     "video_interrupt": True,
 # }
-video_param = {}
 
 # ------------------------------------------------
 # common variable settings
@@ -136,7 +109,7 @@ e_meta = Meta(
     **speaking_rate_param,
     **video_param,
     )
-# num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
+num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 save_ppt_as_images(e_meta)
 
 #%% ----------------------------------------------
@@ -155,10 +128,8 @@ e_keywords = k_keywords
 print(e_title)
 print(e_desc)
 #%% 
-e_title = 'Summary of the Developments on the Key Issues Since Trump Election'
+e_title = ''
 e_desc = '''
-#Trump #Samsung #Battery #Polarization  
-Since Trump's election, We've covered many economic issues using Youtube Shorts. Today, let us summarize the developments on the issues so far.
 '''
 
 #%% ----------------------------------------------
