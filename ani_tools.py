@@ -7,6 +7,9 @@ import googleapiclient.errors
 from googleapiclient.http import MediaFileUpload
 import json
 import os
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 def _translate_text(input_text, conf_file, type='ssml'):
     with open(conf_file, 'r') as json_file:
@@ -159,3 +162,78 @@ def get_ids(client_secrets_file):
 
 # for playlist_id, title in playlists:
 #     print(f"Playlist ID: {playlist_id}, Title: {title}")
+
+
+class IST:  # IssueTracker Handler
+    IST_SITE = 'https://issuetracker.info/'
+    CONF_FILE = '../config/config.json'
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.login()
+
+    def _get_csrf_token(self, url):
+        response = self.session.get(url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
+        self.csrf_token = csrf_token_input["value"] if csrf_token_input else None
+
+    def login(self):
+        login_url = urljoin(IST.IST_SITE, 'login/')
+        self._get_csrf_token(login_url)
+
+        with open(IST.CONF_FILE, 'r') as json_file:
+            config = json.load(json_file)
+            self.ist_id = config['issuetracker_id']
+            ist_pass = config['issuetracker_pass']
+
+        form_data = {
+            "username": self.ist_id,
+            "password": ist_pass,
+            "csrfmiddlewaretoken": self.csrf_token,
+        }
+        headers = {
+            "Referer": login_url,  # Required by CSRF protection
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+        }
+
+        response = self.session.post(login_url, data=form_data, headers=headers)
+        if response.status_code != 200:
+            raise Exception('IST login failed')
+
+
+    def create_post(self, card_id: int, form_data: dict, images: list = [], html=False):
+        target_url = urljoin(IST.IST_SITE, f'card/{card_id}/new_post/')
+        self._get_csrf_token(target_url)
+
+        form_data['csrfmiddlewaretoken'] = self.csrf_token
+        lm = len(images)
+        if lm > 7: 
+            raise Exception('Only up to 7 images can be posted')
+        mimage_str = 'abcdefg'
+        form_data['mimage_keys'] = mimage_str[:lm].upper() + mimage_str[lm:]
+        if html:
+            form_data['html_or_text'] = 'html'
+
+        files = {}
+        for i, im in enumerate(images):
+            if not os.path.exists(im):
+                raise Exception(f"image {im} does not exist")
+            files[f'image{i+1}_input'] = (os.path.basename(im), open(im, 'rb'))
+
+        headers = {
+            "Referer": target_url,  # Required by CSRF protection
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+        }
+        response = self.session.post(target_url, data=form_data, files=files, headers=headers)
+
+        # Close the image files after the POST request
+        for _,file in files.items():
+            file[1].close()
+
+        if response.status_code == 200:
+            print(f"Post{' ['+form_data['title']+']' if 'title' in form_data else ''}{' ('+str(lm)+' images)' if lm>0 else ''} created.")
+            return None
+        else:
+            print(f"Post{' ['+form_data['title']+']' if 'title' in form_data else ''}{' ('+str(lm)+' images)' if lm>0 else ''} creation FAILED.")
+            return response.text
