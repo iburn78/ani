@@ -208,9 +208,9 @@ class IST:  # IssueTracker Handler
 
         form_data['csrfmiddlewaretoken'] = self.csrf_token
         lm = len(images)
-        if lm > 7: 
-            raise Exception('Only up to 7 images can be posted')
-        mimage_str = 'abcdefg'
+        if lm > 10: 
+            raise Exception('Only up to 10 images can be posted')
+        mimage_str = 'abcdefghij'
         form_data['mimage_keys'] = mimage_str[:lm].upper() + mimage_str[lm:]
         if html:
             form_data['html_or_text'] = 'html'
