@@ -16,7 +16,7 @@ YOUTUBE_CONF = '../config/youtube_conf.json'
 # ------------------------------------------------
 type_of_video = 1 
 
-k_ppt_file = '3분기실적_K_2024-11-19_shorts'
+k_ppt_file = '트럼프영향분석_K_2024-11-07_shorts'
 k_title = '코스피 상장사 3분기 실적 분석 및 해석!'
 k_desc = '''
 #3분기 #KOSPI #실적분석 #해석 #불확실성
@@ -47,7 +47,8 @@ playlist_id_qp = None
 playlist_id_it = None
 speaking_rate_KR = 1.2 # Korean
 speaking_rate_EN = 1.1 # English 
-speaking_rate_param = {}
+speaking_rate_param = {
+}
 
 if type_of_video == 0: 
     thumbnail_file_k = os.path.join(f"{k_ppt_file.replace('.pptx', '')}", "slide0.png")
@@ -64,7 +65,7 @@ if type_of_video == 2:
         'line_break': 0.1,
     }
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 # ✓ Generate Korean Video with Voice
 # ------------------------------------------------
 k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GCA, lang='K',
@@ -73,11 +74,11 @@ k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GCA, lang='K',
     **speaking_rate_param,
     **video_param,
     )
-# ppt_to_video(k_meta)
+# ppt_to_video(k_meta) 
 save_ppt_as_images(k_meta)
 num = ppt_to_text(k_meta)
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 # if needed modify the script here.
 # ------------------------------------------------
 
@@ -86,7 +87,7 @@ timepoints = ppt_tts(k_meta, num)
 # may check . after mark tag: add it manually or programmatically afterwards
 composite_video_from_ppt_and_voice(k_meta, timepoints)
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 # ✓ Upload Korean 
 # ------------------------------------------------
 upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file_k, client_secrets_file=CLIENT_SECRETS_FILE, playlist_id=playlist_id_qp)
@@ -109,20 +110,20 @@ e_meta = Meta(
     **speaking_rate_param,
     **video_param,
     )
-num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 save_ppt_as_images(e_meta)
+num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 # if needed modify the script here.
 # ------------------------------------------------
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 timepoints = ppt_tts(e_meta, num)
 # print(timepoints)
 # may check . after mark tag: add it manually or programmatically afterwards
 composite_video_from_ppt_and_voice(e_meta, timepoints)
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
 e_keywords = k_keywords
 print(e_title)
@@ -132,5 +133,5 @@ e_title = ''
 e_desc = '''
 '''
 
-#%% ----------------------------------------------
+#%% ---------------------------------------------------------------------------------------
 upload_video(e_meta, e_title, e_desc, e_keywords, thumbnail_file=thumbnail_file_e, client_secrets_file=CLIENT_SECRETS_FILE, playlist_id=playlist_id_it)

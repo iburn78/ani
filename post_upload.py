@@ -1,14 +1,13 @@
 #%% 
 from ani_tools import *
-
-
-#%% 
-
 import os
 import re
 from datetime import datetime
 import subprocess
 from pptx import Presentation
+from ppt2video.tools import _clean_text
+
+CONF_FILE = '../config/config.json'
 
 def find_pptx_files(base_dir):
     category_K_files = []
@@ -25,10 +24,14 @@ def find_pptx_files(base_dir):
     
     return category_K_files, category_E_files
 
-def filter_short_files(files):
-    # Filter for files containing '_shorts' in the name (case insensitive)
-    shorts_files = [file for file in files if '_shorts' in file.lower()]
-    return shorts_files
+def filter_long_files(files): # non 13sec shorts
+    return [file for file in files if '_shorts' not in file.lower()]
+
+def filter_short_files(files): # non 13sec shorts
+    return [file for file in files if '_shorts' in file.lower() and '_13sec' not in file.lower()]
+
+def filter_13sec_short_files(files):
+    return [file for file in files if '_13sec' in file.lower()]
 
 def sort_files_by_date(file_list):
     files_with_date = []
@@ -61,23 +64,6 @@ def open_ppt_file(ppt_path):
     except subprocess.CalledProcessError as e:
         print(f"Error occurred while opening the file: {e}")
 
-base_dir = r'C:\Users\user\projects\analysis'
-cat_K_files, cat_E_files = find_pptx_files(base_dir)
-cat_K_shorts = sort_files_by_date(filter_short_files(cat_K_files))
-cat_E_shorts = sort_files_by_date(filter_short_files(cat_E_files))
-
-#%% 
-
-ppt_path = cat_K_shorts[20]
-open_ppt_file(ppt_path)
-# for f in cat_E_files[:3]: 
-#     n = get_slide_count(f)
-#     print(n, f)
-
-#%% 
-
-from ppt2video.tools import _clean_text
-
 def get_slide_count(ppt_path):
     ppt = Presentation(ppt_path)
     return len(ppt.slides)
@@ -90,22 +76,76 @@ def get_notes(ppt_path):
         if slide.notes_slide and slide.notes_slide.notes_text_frame:
             notes = slide.notes_slide.notes_text_frame.text
             notes = _clean_text(notes)
-            slide_content += f'<br> (P{slide_number+1}) '+notes + '\n'
+            slide_content += f'<br> (p{slide_number+1}) '+ notes + '\n'
     
     return slide_content
 
+def set_notes(ppt_path, text):
+    notes = text.splitlines()
+    pattern = r"<br> \(p\d+\) "
+    ppt = Presentation(ppt_path)
 
-a = get_notes(cat_E_files[0])
-print(a)
+    for slide_number, slide in enumerate(ppt.slides):
+        if slide.notes_slide and slide.notes_slide.notes_text_frame:
+            slide.notes_slide.notes_text_frame.text = re.sub(pattern, "", notes[slide_number])
+
+    ppt.save(ppt_path)
+
+def get_prefix_from_filename(file):
+    filename = os.path.basename(file)
+    if '13sec' in filename: 
+        prefix = '[13 sec'
+    elif 'shorts' in filename:
+        prefix = '[Shorts'
+    else:    
+        prefix = '[Video'
+    date_format = r"\b\d{4}-\d{2}-\d{2}\b"
+    match = re.search(date_format, filename)
+    date = match.group(0) if match else ''
+    if date != '':
+        prefix = prefix + ' ' + date + '] '
+    else: 
+        prefix = prefix + '] '
+    return prefix
+
+#%% 
+base_dir = r'C:\Users\user\projects\analysis'
+cat_K_files, cat_E_files = find_pptx_files(base_dir)
+cat_K_longs = sort_files_by_date(filter_long_files(cat_K_files))
+cat_E_longs = sort_files_by_date(filter_long_files(cat_E_files))
+cat_K_shorts = sort_files_by_date(filter_short_files(cat_K_files))
+cat_E_shorts = sort_files_by_date(filter_short_files(cat_E_files))
+cat_K_13secs = sort_files_by_date(filter_13sec_short_files(cat_K_files))
+cat_E_13secs = sort_files_by_date(filter_13sec_short_files(cat_E_files))
+
+display(cat_K_longs)
+display(cat_K_shorts)
+display(cat_K_13secs)
+display(cat_E_longs)
+display(cat_E_shorts)
+display(cat_E_13secs)
+
+#%% 
+K_file = cat_K_shorts[]
+E_file = K_file.replace('_K_', '_E_')
+K_note = get_notes(K_file)
+E_note = translate_script(K_note, CONF_FILE)
+set_notes(E_file, E_note) 
+get_desc(K_note, CONF_FILE)
+
+#%% 
 
 QP_SHORTS_CARD = 45  # Quarterly Performances -Shorts (한글본, Korean)
 ist = IST()
 
 form_data = {
     "title": "Programmatically Created Post",
-    "content": a,
+    "content": "",
     "tags": "haha this is tags", 
 }
-images = ['data/ppt/images/005380_fh_operat_01_E.png', 'data/ppt/images/207940_price_average_E.png']
+images = []
 
 ist.create_post(QP_SHORTS_CARD, form_data, images, html=True)
+
+
+
