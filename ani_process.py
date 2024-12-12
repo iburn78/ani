@@ -1,13 +1,7 @@
 #%% ---------------------------------------------------------------------------------------
-# ✓ Setup
-# ------------------------------------------------
-from ppt2video.tools import *
 from ani_tools import *
-
-GCA ='../config/google_cloud.json'
-CONF_FILE = '../config/config.json'
-CLIENT_SECRETS_FILE = "../config/google_client.json"
-YOUTUBE_CONF = '../config/youtube_conf.json'
+from ist_tools import get_notes, get_desc
+import shutil
 
 # ------------------------------------------------
 # 0: wide videos
@@ -15,30 +9,33 @@ YOUTUBE_CONF = '../config/youtube_conf.json'
 # 2: 13 sec series
 # ------------------------------------------------
 type_of_video = 1 
-
-k_ppt_file = '트럼프영향분석_K_2024-11-07_shorts'
-k_title = '코스피 상장사 3분기 실적 분석 및 해석!'
-k_desc = '''
-#3분기 #KOSPI #실적분석 #해석 #불확실성
-코스피 상장사들이 놀랍게도 3분기까지 누적실적에서 역대 최고치를 달성했습니다. 작년 대비해서 실적 개선이 엄청나게 이루어 졌는데, 피부로 느껴지는 경기는 너무 좋지 않습니다. 한번 살펴보았습니다.
-'''
-k_keywords = ['3Q', 'KOSPI', 'Uncertainties', 'Quaterly Performance']
-fade_after_slide=[0, 1, 2, 3, 5, 6, 7]
-
-# ------------------------------------------------
+k_ppt_file = '한국경제증발량_K_2024-12-10_shorts'
+no_fade = []
 video_param = {}
 # video_param = {
-#     "target_slide_for_video": [1, 3, 5],
-#     "video_file_path": ['index_us.mp4', 'index_other.mp4', 'index_KR.mp4'],
-#     "video_height_scale": [0.45, 0.45, 0.45],
-#     "video_location": [(40, 260), (40, 260), (40, 260)],  # list of (x, y)
-#     "video_interrupt": True,
+#     "target_slide_for_video": [1, 4, 6], # slide starts from 0
+#     "video_file_path": ['index_KR.mp4', 'index_us.mp4', 'index_other.mp4'],
+#     "video_height_scale": [0.50, 0.50, 0.50],
+#     "video_location": [(30, 250), (30, 250), (30, 250)],  # list of (x, y)
+#     "video_interrupt": False,
 # }
+
+check_filename(type_of_video, k_ppt_file)
+prep_K_file = os.path.join(VID_WORKING_DIR, k_ppt_file.replace('.pptx','')+'.pptx')
+notes = get_notes(prep_K_file)
+[title, tags, desc] = get_desc(notes, 'K', CONF_FILE)
+k_title = title
+k_desc = tags+ '\n' +desc
+k_keywords = list(tags.replace('#','').strip().split(' '))
+print(k_title)
+print(k_desc)
+print(k_keywords)
 
 # ------------------------------------------------
 # common variable settings
 # ------------------------------------------------
-
+fade_after_slide=list(range(30))
+fade_after_slide = [x for x in fade_after_slide if x not in no_fade]
 k_ppt_file = k_ppt_file.replace('.pptx', '')+'.pptx'
 e_ppt_file = k_ppt_file.replace('_K_', '_E_')
 thumbnail_file_k = None
@@ -46,7 +43,7 @@ thumbnail_file_e = None
 playlist_id_qp = None
 playlist_id_it = None
 speaking_rate_KR = 1.2 # Korean
-speaking_rate_EN = 1.1 # English 
+speaking_rate_EN = 1.2 # English 
 speaking_rate_param = {
 }
 
@@ -65,10 +62,11 @@ if type_of_video == 2:
         'line_break': 0.1,
     }
 
+
 #%% ---------------------------------------------------------------------------------------
 # ✓ Generate Korean Video with Voice
 # ------------------------------------------------
-k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GCA, lang='K',
+k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GOOGLE_CLOUD, lang='K',
     fade_after_slide=fade_after_slide,
     speaking_rate_KR=speaking_rate_KR, 
     **speaking_rate_param,
@@ -88,9 +86,28 @@ timepoints = ppt_tts(k_meta, num)
 composite_video_from_ppt_and_voice(k_meta, timepoints)
 
 #%% ---------------------------------------------------------------------------------------
+# if needed change title, desc, and tags
+# ------------------------------------------------
+k_title = ''
+k_desc = '''
+'''
+k_keywords = []
+print(k_title)
+print(k_desc)
+print(k_keywords)
+
+#%% ---------------------------------------------------------------------------------------
 # ✓ Upload Korean 
 # ------------------------------------------------
-upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file_k, client_secrets_file=CLIENT_SECRETS_FILE, playlist_id=playlist_id_qp)
+k_id = upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file_k, client_secrets_file=GOOGLE_CLIENT, playlist_id=playlist_id_qp)
+
+#%% 
+append_to_youtube_log(k_ppt_file, k_title, k_desc, k_keywords, k_id, type_of_video)
+
+
+
+
+
 
 
 
@@ -101,10 +118,17 @@ upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file_
 
 
 #%% ---------------------------------------------------------------------------------------
+# ✓ File to work-on
+# ------------------------------------------------
+prep_E_file = prep_K_file.replace('_K_', '_E_')
+if not os.path.exists(prep_E_file):
+    shutil.copy(prep_K_file, prep_E_file)
+
+#%% ---------------------------------------------------------------------------------------
 # ✓ Upload English 
 # ------------------------------------------------
 e_meta = Meta(
-    ppt_file=e_ppt_file, google_application_credentials=GCA, lang='E', 
+    ppt_file=e_ppt_file, google_application_credentials=GOOGLE_CLOUD, lang='E', 
     fade_after_slide=fade_after_slide,
     speaking_rate_EN=speaking_rate_EN, 
     **speaking_rate_param,
@@ -125,13 +149,20 @@ composite_video_from_ppt_and_voice(e_meta, timepoints)
 
 #%% ---------------------------------------------------------------------------------------
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
-e_keywords = k_keywords
+e_keywords = re.findall(r"#(\w+)", e_desc)
 print(e_title)
 print(e_desc)
-#%% 
-e_title = ''
-e_desc = '''
-'''
+print(e_keywords)
+
+#%%
+e_title = ""
+e_desc = ""
+print(e_title)
+print(e_desc)
+print(e_keywords)
 
 #%% ---------------------------------------------------------------------------------------
-upload_video(e_meta, e_title, e_desc, e_keywords, thumbnail_file=thumbnail_file_e, client_secrets_file=CLIENT_SECRETS_FILE, playlist_id=playlist_id_it)
+e_id = upload_video(e_meta, e_title, e_desc, e_keywords, thumbnail_file=thumbnail_file_e, client_secrets_file=GOOGLE_CLIENT, playlist_id=playlist_id_it)
+
+#%%
+append_to_youtube_log(e_ppt_file, e_title, e_desc, e_keywords, e_id, type_of_video)

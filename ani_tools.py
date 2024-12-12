@@ -8,8 +8,17 @@ from googleapiclient.http import MediaFileUpload
 import json
 import os
 import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+import pandas as pd
+import re
+
+GOOGLE_CLIENT = "../config/google_client.json"
+YOUTUBE_CONF = '../config/youtube_conf.json'
+GOOGLE_CLOUD ='../config/google_cloud.json'
+CONF_FILE = '../config/config.json'
+
+VID_WORKING_DIR = 'data/ppt/'
+YOUTUBE_LOG = 'data/youtube_log.xlsx'
+
 
 def _translate_text(input_text, conf_file, type='ssml'):
     with open(conf_file, 'r') as json_file:
@@ -20,10 +29,10 @@ def _translate_text(input_text, conf_file, type='ssml'):
     if type=='ssml': 
         content_command = "The following text is in SSML format. Please translate the content to English while preserving the SSML tags:\n\n"
     elif type=='title': 
-        content_command = "The following text is a title of a YouTube video. Please translate it into English concisely so that it fits as a title and don't put quotation marks in the result:\n\n"
+        content_command = "The following text is a title of a YouTube video. Please translate it into English concisely so that it fits as a title with no more than 55 characters and don't put quotation marks in the result:\n\n"
     elif type=='desc':
-        content_command = "The following text is a short description of a YouTube video. Please translate it into English concisely so that it fits as a short description. For hastags, translate them as well, leave the # marks, and put them in front of the result as in the original text:\n\n"
-    elif type=='post':
+        content_command = "The following text is a short description of a YouTube video. Please translate it into English concisely so that it fits as a short description. For hastags, translate them as well. For each hash tag, remove spaces, capitalize the first letter of each word, and leave the # marks. Put the hash tags in front of the result as in the original text. :\n\n"
+    elif type=='script':
         content_command = "The following text is a script of a YouTube video. Please translate the Korean part into English. Also maintain the format of the text:\n\n"
     else:
         content_command = "ERROR"
@@ -41,23 +50,22 @@ def _translate_text(input_text, conf_file, type='ssml'):
     )
     return chat_completion.choices[0].message.content
 
-def _get_desc(input_text, conf_file):
+
+def _get_desc(input_text, lang, conf_file):
     with open(conf_file, 'r') as json_file:
         config = json.load(json_file)
         api_key = config['openai']
 
     client = OpenAI(api_key=api_key)
-    content_command = '''
+    language = 'Korean' if lang == 'K' else 'English' if lang == 'E' else Exception("Invalid language")
+    content_command = f'''
 YouTube video script. Respond exactly in this format:
 
-line 1: Korean title
-line 2: Korean hash tags top 10 with the hash
-line 3: Korean description up to 60 words
-line 4: English title
-line 5: English hash tags top 10 with the hash
-line 3: English description up to 60 words
+line 1: {language} title
+line 2: {language} hash tags top 5 with the hash
+line 3: {language} description up to 60 words
 
-Use new lines without format keywords or quotes. For hash tags, remove spaces, capitalize the first letter of each word.
+Titles need to be less than or at most 55 characters. Use new lines without format keywords or quotes. For hash tags, remove spaces, capitalize the first letter of each word.
 
 '''
     chat_completion = client.chat.completions.create(
@@ -72,30 +80,6 @@ Use new lines without format keywords or quotes. For hash tags, remove spaces, c
         ]
     )
     return chat_completion.choices[0].message.content
-
-def get_desc(input_text, conf_file): 
-    res = _get_desc(input_text, conf_file)
-    res = "\n".join(line for line in res.splitlines() if line.strip()).splitlines()
-
-    if len(res) != 6:
-        print(res)
-        raise Exception('Error in ChatGPT response and/or get_desc function')
-
-    K_title = res[0]
-    K_tags = res[1]
-    K_desc = res[2]
-    E_title = res[3]
-    E_tags = res[4]
-    E_desc = res[5]
-
-    print(K_title)
-    print(K_tags)
-    print(K_desc)
-    print(E_title)
-    print(E_tags)
-    print(E_desc)
-
-    return None
 
 
 def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
@@ -116,15 +100,37 @@ def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
 
     return num
 
+
+# Translate to English, and get English ttitle and desc
 def translate_title_desc(title, desc, conf_file): 
     translated_title = _translate_text(title, conf_file, 'title')
     translated_desc = _translate_text(desc, conf_file, 'desc')
     return translated_title, translated_desc
 
-def translate_script(script, conf_file):
-    return _translate_text(script, conf_file, 'post')
 
+# Translate to English, and get English script notes
+def translate_script(script, conf_file):
+    return _translate_text(script, conf_file, 'script')
+
+
+# get Korean and English title, desc, tags
+# lang = 'K' or 'E'
+def get_desc(input_text, lang, conf_file): 
+    res = _get_desc(input_text, lang, conf_file)
+    res = "\n".join(line.strip() for line in res.splitlines() if line.strip()).splitlines()
+
+    if len(res) != 3:
+        print(res)
+        raise Exception('Error in ChatGPT response and/or get_desc function')
+
+    return res
+
+
+# upload video to Youtube
 def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, category_id = '27', client_secrets_file = None, playlist_id = None): # '27': education
+    if len(title) > 70:
+        raise Exception('Title should be not too long. Currently more than 70.')
+    
     # SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
     SCOPES = [
     "https://www.googleapis.com/auth/youtube.force-ssl",
@@ -188,11 +194,13 @@ def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, categor
         response = request.execute()
         print(f"Video added to playlist {playlist_id}")
 
+    return video_id
 
-def get_ids(client_secrets_file):
+
+def get_ids(google_client):
     SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file, SCOPES)
+        google_client, SCOPES)
     credentials = flow.run_local_server(port=0)
     
     youtube = googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
@@ -213,98 +221,14 @@ def get_ids(client_secrets_file):
     )
     response = request.execute()
     
-    # Extract playlist IDs and titles
+    # Extract playlist IDs and titles (playlist_id, title)
     playlists = [(item['id'], item['snippet']['title']) for item in response.get('items', [])]
+
     return channel_id, playlists
 
-# CLIENT_SECRETS_FILE = "../config/google_client.json"
-# channel_id, playlists = get_ids(CLIENT_SECRETS_FILE)
-# print(f"Channel ID: {channel_id}")
 
-# for playlist_id, title in playlists:
-#     print(f"Playlist ID: {playlist_id}, Title: {title}")
-
-
-class IST:  # IssueTracker Handler
-    IST_SITE = 'https://issuetracker.info/'
-    CONF_FILE = '../config/config.json'
-
-    def __init__(self):
-        self.session = requests.Session()
-        self.login()
-
-    def _get_csrf_token(self, url):
-        response = self.session.get(url)
-        soup = BeautifulSoup(response.text, "html.parser")
-        csrf_token_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
-        self.csrf_token = csrf_token_input["value"] if csrf_token_input else None
-
-    def login(self):
-        login_url = urljoin(IST.IST_SITE, 'login/')
-        self._get_csrf_token(login_url)
-
-        with open(IST.CONF_FILE, 'r') as json_file:
-            config = json.load(json_file)
-            self.ist_id = config['issuetracker_id']
-            ist_pass = config['issuetracker_pass']
-
-        form_data = {
-            "username": self.ist_id,
-            "password": ist_pass,
-            "csrfmiddlewaretoken": self.csrf_token,
-        }
-        headers = {
-            "Referer": login_url,  # Required by CSRF protection
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
-        }
-
-        response = self.session.post(login_url, data=form_data, headers=headers)
-        if response.status_code != 200:
-            raise Exception('IST login failed')
-
-
-    def create_post(self, card_id: int, form_data: dict, images: list = [], html=False):
-        target_url = urljoin(IST.IST_SITE, f'card/{card_id}/new_post/')
-        self._get_csrf_token(target_url)
-
-        form_data['csrfmiddlewaretoken'] = self.csrf_token
-        lm = len(images)
-        if lm > 10: 
-            raise Exception('Only up to 10 images can be posted')
-        mimage_str = 'abcdefghij'
-        form_data['mimage_keys'] = mimage_str[:lm].upper() + mimage_str[lm:]
-        if html:
-            form_data['html_or_text'] = 'html'
-
-        files = {}
-        for i, im in enumerate(images):
-            if not os.path.exists(im):
-                raise Exception(f"image {im} does not exist")
-            files[f'image{i+1}_input'] = (os.path.basename(im), open(im, 'rb'))
-
-        headers = {
-            "Referer": target_url,  # Required by CSRF protection
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
-        }
-        response = self.session.post(target_url, data=form_data, files=files, headers=headers)
-
-        # Close the image files after the POST request
-        for _,file in files.items():
-            file[1].close()
-
-        if response.status_code == 200:
-            print(f"Post{' ['+form_data['title']+']' if 'title' in form_data else ''}{' ('+str(lm)+' images)' if lm>0 else ''} created.")
-            return None
-        else:
-            print(f"Post{' ['+form_data['title']+']' if 'title' in form_data else ''}{' ('+str(lm)+' images)' if lm>0 else ''} creation FAILED.")
-            return response.text
-
-# assumes youtube_conf
-# import pandas in the function
-def get_title_link(conf_file, excel_file):
-    import pandas as pd
-
-    with open(conf_file, 'r') as json_file:
+def get_title_link_from_youtube(youtube_conf, excel_file):
+    with open(youtube_conf, 'r') as json_file:
         config = json.load(json_file)
         API_KEY = config['API_key_Data_API_V3']
         CHANNEL_ID = config['quarterlyperf_channel_id']
@@ -336,3 +260,81 @@ def get_title_link(conf_file, excel_file):
     TL['upload_date'] = TL['upload_date'].dt.tz_localize(None)  # Remove timezone information
     TL = TL.sort_values(by='upload_date', ascending=True)  # Sort by upload date
     TL.to_excel(excel_file, index=False)
+
+
+def check_filename(type_of_video, filename):
+    if '_K_' not in filename and '_E_' not in filename:
+        raise Exception('File name check - language type')
+    
+    if '_K' in filename and '_E' in filename:
+        raise Exception('File name check - language type')
+
+    if '_13sec' in filename: 
+        if '_shorts' not in filename: 
+            raise Exception('13sec is shorts: add _shorts in filename')
+        if '_13secs' in filename: 
+            raise Exception('Use 13sec instead of 13secs')
+    
+    if '_shor' in filename.lower():
+        if '_shorts' not in filename: 
+            raise Exception('term _shorts has to be used - not capitalized')
+    
+    if '_13s' in filename.lower():
+        if '_13sec' not in filename: 
+            raise Exception('term _13sec has to be used - not capitalized')
+
+    if '_shorts' in filename:  
+        if '_13sec' in filename and type_of_video != 2:
+            raise Exception('Video type check')
+        elif '_13sec' not in filename and type_of_video != 1:
+            raise Exception('Video type check')
+    elif type_of_video !=0: 
+        raise Exception('Video type check')
+
+    try:
+        DATE_GAP = 2 #days
+        # date has to be yyyy-mm-dd format, e.g., 2024-12-01
+        date = re.search(r"\d{4}-\d{2}-\d{2}", filename).group()
+        valid_date = pd.to_datetime(date, format='%Y-%m-%d', errors='raise')
+        if abs((valid_date - pd.Timestamp.now().normalize()).days) > DATE_GAP:
+            raise Exception("Check Date: too apart from today")
+    except ValueError:
+        raise Exception('Date check: not correct')
+
+
+def append_to_youtube_log(ppt_file, title, desc, keywords, id, type_of_video, log_file=YOUTUBE_LOG):
+    if '_K_' in ppt_file:
+        category = 'QP-Korean'
+    elif '_E_' in ppt_file:
+        category = 'IST-English'
+    else:
+        raise Exception('File name check')
+
+    date = re.search(r"\d{4}-\d{2}-\d{2}", ppt_file).group()
+    now = pd.Timestamp.now().strftime('%Y-%m-%d, %H:%M:%S')
+
+    video_record = {
+        'category': category,
+        'type': type_of_video,
+        'filename': os.path.basename(ppt_file),
+        'date': date,
+        'title': title,
+        'desc': desc,
+        'keywords': ", ".join(keywords),  # Joining list of keywords into a string
+        'id': id,
+        'log_time': now
+    }
+
+    # Check if the log file exists
+    if os.path.exists(log_file):
+        df = pd.read_excel(log_file)
+    else:
+        # Create a new DataFrame with the correct columns if the file doesn't exist
+        df = pd.DataFrame(columns=video_record.keys())
+    
+    # Convert video_record to a DataFrame and append it
+    new_row = pd.DataFrame([video_record])
+    df = pd.concat([df, new_row], ignore_index=True)
+    
+    # Save the updated DataFrame back to Excel
+    df.to_excel(log_file, index=False)

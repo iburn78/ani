@@ -5,8 +5,10 @@ from PIL import Image
 import os
 
 class db_to_ppt:
+    def __init__(self, ):
+        pass
 
-    def __init__(self, )
+
 pptx_filename = '삼성전자_K_2024-11-08_shorts_13sec.pptx'
 
 working_dir = 'data/ppt/'
