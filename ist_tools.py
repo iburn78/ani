@@ -306,7 +306,7 @@ def upload_a_ppt_ist(ist, ppt_path, type):
             desc_for_subfile = desc
         if notes_for_subfile.startswith('<br>'):
             notes_for_subfile = notes_for_subfile[4:]
-        content = desc_for_subfile + "<hr>\n" + notes_for_subfile
+        content = desc_for_subfile + "\n<hr>" + notes_for_subfile
         content = content + f"<br><a href='{vlink}' target='_blank' rel='noopener noreferrer'>Youtube Link - {vl_name}</a>"
 
         form_data = {
