@@ -13,9 +13,7 @@ from ppt2video.tools import _clean_text
 from ani_tools import *
 import shutil
 
-CONF_FILE = '../config/config.json'
 BASE_DIR = r'C:\Users\user\projects\analysis'
-PPT_WORK_DIR = r'C:\Users\user\projects\ani\data\ppt'
 # Better to clean the slide image root directory before running...
 SLIDE_IMAGE_ROOT = 'C:\\Users\\user\\projects\\analysis\\temp\\'
 MAX_IMAGES_PER_POST = 10
@@ -378,4 +376,6 @@ def find_ppt_tranlate_and_upload(target_dir, dates_on_after, conf_file):
 
 if __name__ == '__main__': 
     DATES_ON_AFTER = '2024-01-01' # None for today
+    PPT_WORK_DIR = r'C:\Users\user\projects\ani\data\ppt'
+    CONF_FILE = '../config/config.json'
     find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)
