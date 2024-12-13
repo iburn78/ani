@@ -193,10 +193,6 @@ class VProcessor:
         self.process_E_video(e_info)
 
 
-#####
-# - input logic, test...
-# - youtube logging, if already exist, then skip. 
-# - create youtube log handling func: append, delete, check existance....
 
 if __name__ == "__main__": 
     k_ppt_file = ''
