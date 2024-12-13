@@ -88,7 +88,7 @@ class PPT_MAKER:
         if self.target_pptx_name == PPT_MAKER.BLANK_FILE_NAME:
             raise Exception('Check target file name: should not be the blank file name')
 
-    def set_ppt(self):
+    def make_ppt(self):
         for index, row in self.target_db.iterrows():
             slide = self.prs.slides.add_slide(self.get_slide_type(row['type']))
             self.populate_slide_with_data(slide, row)
@@ -195,5 +195,5 @@ class PPT_MAKER:
 if __name__ == '__main__': 
     v_id = 1 
     pm = PPT_MAKER(v_id)
-    pm.set_ppt()
+    pm.make_ppt()
 

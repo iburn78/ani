@@ -1,4 +1,5 @@
-#%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
 from ani_tools import *
 from ist_tools import get_notes, get_desc
 import shutil
@@ -8,7 +9,6 @@ import shutil
 # 1: vertical shorts
 # 2: 13 sec series
 # ------------------------------------------------
-type_of_video = 1 
 k_ppt_file = '한국경제증발량_K_2024-12-10_shorts'
 no_fade = []
 video_param = {}
@@ -20,16 +20,25 @@ video_param = {}
 #     "video_interrupt": False,
 # }
 
-check_filename(type_of_video, k_ppt_file)
+type_of_video = check_filename(k_ppt_file)
+###################### VID WORKING DIR Deleted.
 prep_K_file = os.path.join(VID_WORKING_DIR, k_ppt_file.replace('.pptx','')+'.pptx')
 notes = get_notes(prep_K_file)
 [title, tags, desc] = get_desc(notes, 'K', CONF_FILE)
 k_title = title
 k_desc = tags+ '\n' +desc
 k_keywords = list(tags.replace('#','').strip().split(' '))
+# ------------------------------------------------
+# Check title, desc and keywords
+# ------------------------------------------------
 print(k_title)
 print(k_desc)
 print(k_keywords)
+
+# k_title = ""
+# k_desc = '''
+# '''
+# k_keywords = []
 
 # ------------------------------------------------
 # common variable settings
@@ -62,8 +71,8 @@ if type_of_video == 2:
         'line_break': 0.1,
     }
 
-
-#%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
 # ✓ Generate Korean Video with Voice
 # ------------------------------------------------
 k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GOOGLE_CLOUD, lang='K',
@@ -72,36 +81,21 @@ k_meta = Meta(ppt_file=k_ppt_file, google_application_credentials=GOOGLE_CLOUD, 
     **speaking_rate_param,
     **video_param,
     )
-# ppt_to_video(k_meta) 
 save_ppt_as_images(k_meta)
 num = ppt_to_text(k_meta)
-
-#%% ---------------------------------------------------------------------------------------
-# if needed modify the script here.
-# ------------------------------------------------
-
-timepoints = ppt_tts(k_meta, num)
-# print(timepoints)
-# may check . after mark tag: add it manually or programmatically afterwards
+timepoints, total_duration = ppt_tts(k_meta, num)
 composite_video_from_ppt_and_voice(k_meta, timepoints)
 
-#%% ---------------------------------------------------------------------------------------
-# if needed change title, desc, and tags
-# ------------------------------------------------
-k_title = ''
-k_desc = '''
-'''
-k_keywords = []
-print(k_title)
-print(k_desc)
-print(k_keywords)
-
-#%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
 # ✓ Upload Korean 
 # ------------------------------------------------
 k_id = upload_video(k_meta, k_title, k_desc, k_keywords, thumbnail_file=thumbnail_file_k, client_secrets_file=GOOGLE_CLIENT, playlist_id=playlist_id_qp)
 
-#%% 
+#%% ================================================================================
+#   ================================================================================
+# ✓ If successful, append to youtube log 
+# ------------------------------------------------
 append_to_youtube_log(k_ppt_file, k_title, k_desc, k_keywords, k_id, type_of_video)
 
 
@@ -117,14 +111,16 @@ append_to_youtube_log(k_ppt_file, k_title, k_desc, k_keywords, k_id, type_of_vid
 
 
 
-#%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
 # ✓ File to work-on
 # ------------------------------------------------
 prep_E_file = prep_K_file.replace('_K_', '_E_')
 if not os.path.exists(prep_E_file):
     shutil.copy(prep_K_file, prep_E_file)
 
-#%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
 # ✓ Upload English 
 # ------------------------------------------------
 e_meta = Meta(
@@ -137,24 +133,25 @@ e_meta = Meta(
 save_ppt_as_images(e_meta)
 num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 
-#%% ---------------------------------------------------------------------------------------
+# ------------------------------------------------
 # if needed modify the script here.
 # ------------------------------------------------
 
-#%% ---------------------------------------------------------------------------------------
-timepoints = ppt_tts(e_meta, num)
-# print(timepoints)
-# may check . after mark tag: add it manually or programmatically afterwards
+#%% ================================================================================
+#   ================================================================================
+timepoints, total_duration = ppt_tts(e_meta, num)
 composite_video_from_ppt_and_voice(e_meta, timepoints)
 
-#%% ---------------------------------------------------------------------------------------
 e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
 e_keywords = re.findall(r"#(\w+)", e_desc)
 print(e_title)
 print(e_desc)
 print(e_keywords)
 
-#%%
+#%% ================================================================================
+#   ================================================================================
+# if needed modify title, desc, and tags here
+# ------------------------------------------------
 e_title = ""
 e_desc = ""
 print(e_title)
@@ -162,7 +159,15 @@ print(e_desc)
 print(e_keywords)
 
 #%% ---------------------------------------------------------------------------------------
+#%% ================================================================================
+#   ================================================================================
+# if needed modify title, desc, and tags here
+# ------------------------------------------------
 e_id = upload_video(e_meta, e_title, e_desc, e_keywords, thumbnail_file=thumbnail_file_e, client_secrets_file=GOOGLE_CLIENT, playlist_id=playlist_id_it)
 
 #%%
+#%% ================================================================================
+#   ================================================================================
+# if needed modify title, desc, and tags here
+# ------------------------------------------------
 append_to_youtube_log(e_ppt_file, e_title, e_desc, e_keywords, e_id, type_of_video)

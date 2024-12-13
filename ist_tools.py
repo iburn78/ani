@@ -135,7 +135,6 @@ def filter_short_files(files): # non 13sec shorts
 def filter_13sec_short_files(files):
     return [file for file in files if '_13sec' in file.lower()]
 
-
 def sort_files_by_date(file_list, dates_on_after=None):
     # Convert string input to date if provided, default to today's date
     if isinstance(dates_on_after, str):
@@ -245,6 +244,10 @@ def _type_checker(ppt_path, type):
     return lang
 
 # type = 'LF', 'ST', '13'
+# step 1: read youtube log and get youtube url
+# step 2: get language from filename, and get target CARD id
+# step 3: save ppt to images
+# step 4: split ppt to multiple posts, and post each one by one to ist
 def upload_a_ppt_ist(ist, ppt_path, type):
     youtube_log = pd.read_excel(YOUTUBE_LOG)
     vid_obj = youtube_log.loc[youtube_log['filename']==os.path.basename(ppt_path), 'id']
@@ -283,7 +286,9 @@ def upload_a_ppt_ist(ist, ppt_path, type):
     else: 
         raise Exception('Check desc from Excel')
 
-    file_number = 1
+    # below files (or subfiles) mean split posts 
+    # no files are saved on disk and left
+    file_number = 1 
     for start_idx in range(0, total_slides, MAX_IMAGES_PER_POST):
         notes_for_subfile = ''
         images_for_subfile = []
@@ -314,7 +319,6 @@ def upload_a_ppt_ist(ist, ppt_path, type):
         }
         ist.create_post(card_id, form_data, images_for_subfile, html=True)
 
-
 # If already not exists, creates a English copy of a Korean ppt file, and set notes with translated scripts
 def set_translated_notes(K_file, conf_file):
     E_file = K_file.replace('_K_', '_E_')
@@ -326,6 +330,7 @@ def set_translated_notes(K_file, conf_file):
     print(f'English copy of {os.path.basename(K_file)} completed with English notes')
     return None
 
+# Applying set_translated_notes to a list
 def trans_list_of_K_files(K_list, E_list, conf_file):
     E_list_check = E_list.copy()
     for kf in K_list: 
@@ -337,8 +342,8 @@ def trans_list_of_K_files(K_list, E_list, conf_file):
     if len(E_list_check) > 0: 
         raise Exception('Check creation of Engfile')
 
-
 # Script translation might be different from youtube video, as it is done separately here....
+# Batch process ppts in the target_dir and all subfolders
 def find_ppt_tranlate_and_upload(target_dir, dates_on_after, conf_file):
     cat_K_files, cat_E_files = find_pptx_files(target_dir)
     cat_K_longs = sort_files_by_date(filter_long_files(cat_K_files), dates_on_after)

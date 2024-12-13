@@ -16,7 +16,6 @@ YOUTUBE_CONF = '../config/youtube_conf.json'
 GOOGLE_CLOUD ='../config/google_cloud.json'
 CONF_FILE = '../config/config.json'
 
-VID_WORKING_DIR = 'data/ppt/'
 YOUTUBE_LOG = 'data/youtube_log.xlsx'
 
 
@@ -262,7 +261,7 @@ def get_title_link_from_youtube(youtube_conf, excel_file):
     TL.to_excel(excel_file, index=False)
 
 
-def check_filename(type_of_video, filename):
+def check_filename(filename):
     if '_K_' not in filename and '_E_' not in filename:
         raise Exception('File name check - language type')
     
@@ -277,22 +276,22 @@ def check_filename(type_of_video, filename):
     
     if '_shor' in filename.lower():
         if '_shorts' not in filename: 
-            raise Exception('term _shorts has to be used - not capitalized')
+            raise Exception('term _shorts has to be used - not capitalized, etc')
     
     if '_13s' in filename.lower():
         if '_13sec' not in filename: 
-            raise Exception('term _13sec has to be used - not capitalized')
+            raise Exception('term _13sec has to be used - not capitalized, etc')
 
-    if '_shorts' in filename:  
-        if '_13sec' in filename and type_of_video != 2:
-            raise Exception('Video type check')
-        elif '_13sec' not in filename and type_of_video != 1:
-            raise Exception('Video type check')
-    elif type_of_video !=0: 
-        raise Exception('Video type check')
+    # if '_shorts' in filename:  
+    #     if '_13sec' in filename and type_of_video != 2:
+    #         raise Exception('Video type check')
+    #     elif '_13sec' not in filename and type_of_video != 1:
+    #         raise Exception('Video type check')
+    # elif type_of_video !=0: 
+    #     raise Exception('Video type check')
 
     try:
-        DATE_GAP = 2 #days
+        DATE_GAP = 3 #days
         # date has to be yyyy-mm-dd format, e.g., 2024-12-01
         date = re.search(r"\d{4}-\d{2}-\d{2}", filename).group()
         valid_date = pd.to_datetime(date, format='%Y-%m-%d', errors='raise')
@@ -300,6 +299,13 @@ def check_filename(type_of_video, filename):
             raise Exception("Check Date: too apart from today")
     except ValueError:
         raise Exception('Date check: not correct')
+
+    if '_13sec' in filename: 
+        return 2
+    elif '_shorts' in filename: 
+        return 1
+    else: 
+        return 0
 
 
 def append_to_youtube_log(ppt_file, title, desc, keywords, id, type_of_video, log_file=YOUTUBE_LOG):
@@ -338,3 +344,41 @@ def append_to_youtube_log(ppt_file, title, desc, keywords, id, type_of_video, lo
     
     # Save the updated DataFrame back to Excel
     df.to_excel(log_file, index=False)
+
+
+def exist_in_youtube_log(ppt_file, log_file = YOUTUBE_LOG): 
+    if os.path.exists(log_file):
+        df = pd.read_excel(log_file)
+    else:
+        raise Exception('Youtube Log not exists')
+    return os.path.basename(ppt_file) in df['filename'].values  # True or False
+
+
+def get_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
+    if os.path.exists(log_file):
+        df = pd.read_excel(log_file)
+    else:
+        raise Exception('Youtube Log not exists')
+    rec = df.loc[df['filename']==os.path.basename(ppt_file)]
+    if rec.shape[0]==0:
+        raise Exception(f"File {ppt_file} not found in YouTube Log")
+    if rec.shape[0]>1: 
+        raise Exception(f"Filename {ppt_file} is not unique in Youtube Log")
+    title = rec['title'].iloc[0]
+    desc = rec['desc'].iloc[0]
+    return title, desc
+
+
+def delete_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG): 
+    if os.path.exists(log_file):
+        df = pd.read_excel(log_file)
+    else:
+        raise Exception('Youtube Log not exists')
+    rec = df.loc[df['filename']==os.path.basename(ppt_file)]
+    if rec.shape[0]==1: 
+        df = df.loc[df['filename']!=os.path.basename(ppt_file)]
+        df.to_excel(log_file, index=False)
+        print(f'Removal of {ppt_file} from Youtube Log successful')
+    else:
+        print(f'File {ppt_file} not found from Youtube Log or multiple instnaces of such name')
+
