@@ -1,23 +1,30 @@
 #%% 
 from openai import OpenAI
-from ppt2video.tools import *
+from ppt2video.tools import * 
+from ppt2video.tools import _clean_text 
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
 from googleapiclient.http import MediaFileUpload
+from datetime import datetime, date
 import json
 import os
 import requests
 import pandas as pd
 import re
+import subprocess
+import shutil
 
 GOOGLE_CLIENT = "../config/google_client.json"
 YOUTUBE_CONF = '../config/youtube_conf.json'
 GOOGLE_CLOUD ='../config/google_cloud.json'
 CONF_FILE = '../config/config.json'
-
 YOUTUBE_LOG = 'data/youtube_log.xlsx'
 
+
+# ----------------------------------------------------------------------------------------------------
+# ChatGPT API functions, mainly getting translated text
+# ----------------------------------------------------------------------------------------------------
 
 def _translate_text(input_text, conf_file, type='ssml'):
     with open(conf_file, 'r') as json_file:
@@ -81,6 +88,7 @@ Titles need to be less than or at most 55 characters. Use new lines without form
     return chat_completion.choices[0].message.content
 
 
+# Translate to English, and get English script notes for slides in SSML format
 def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
     num = ppt_to_text(meta)
 
@@ -124,6 +132,10 @@ def get_desc(input_text, lang, conf_file):
 
     return res
 
+
+# ----------------------------------------------------------------------------------------------------
+# Google API and Youtube operation and interaction functions
+# ----------------------------------------------------------------------------------------------------
 
 # upload video to Youtube
 def upload_video(meta: Meta, title, desc, keywords, thumbnail_file=None, category_id = '27', client_secrets_file = None, playlist_id = None): # '27': education
@@ -261,52 +273,9 @@ def get_title_link_from_youtube(youtube_conf, excel_file):
     TL.to_excel(excel_file, index=False)
 
 
-def check_filename(filename):
-    if '_K_' not in filename and '_E_' not in filename:
-        raise Exception('File name check - language type')
-    
-    if '_K' in filename and '_E' in filename:
-        raise Exception('File name check - language type')
-
-    if '_13sec' in filename: 
-        if '_shorts' not in filename: 
-            raise Exception('13sec is shorts: add _shorts in filename')
-        if '_13secs' in filename: 
-            raise Exception('Use 13sec instead of 13secs')
-    
-    if '_shor' in filename.lower():
-        if '_shorts' not in filename: 
-            raise Exception('term _shorts has to be used - not capitalized, etc')
-    
-    if '_13s' in filename.lower():
-        if '_13sec' not in filename: 
-            raise Exception('term _13sec has to be used - not capitalized, etc')
-
-    # if '_shorts' in filename:  
-    #     if '_13sec' in filename and type_of_video != 2:
-    #         raise Exception('Video type check')
-    #     elif '_13sec' not in filename and type_of_video != 1:
-    #         raise Exception('Video type check')
-    # elif type_of_video !=0: 
-    #     raise Exception('Video type check')
-
-    try:
-        DATE_GAP = 3 #days
-        # date has to be yyyy-mm-dd format, e.g., 2024-12-01
-        date = re.search(r"\d{4}-\d{2}-\d{2}", filename).group()
-        valid_date = pd.to_datetime(date, format='%Y-%m-%d', errors='raise')
-        if abs((valid_date - pd.Timestamp.now().normalize()).days) > DATE_GAP:
-            raise Exception("Check Date: too apart from today")
-    except ValueError:
-        raise Exception('Date check: not correct')
-
-    if '_13sec' in filename: 
-        return 2
-    elif '_shorts' in filename: 
-        return 1
-    else: 
-        return 0
-
+# ----------------------------------------------------------------------------------------------------
+# Youtube Log handling functions
+# ----------------------------------------------------------------------------------------------------
 
 def append_to_youtube_log(ppt_file, title, desc, keywords, id, type_of_video, log_file=YOUTUBE_LOG):
     if '_K_' in ppt_file:
@@ -381,4 +350,219 @@ def delete_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
         print(f'Removal of {ppt_file} from Youtube Log successful')
     else:
         print(f'File {ppt_file} not found from Youtube Log or multiple instnaces of such name')
+
+
+# ----------------------------------------------------------------------------------------------------
+# PPT file find and sort, etc - disk operation functions
+# ----------------------------------------------------------------------------------------------------
+
+def find_pptx_files(base_dir):
+    category_K_files = []
+    category_E_files = []
+    
+    # Walk through the directory and its subdirectories
+    for root, _, files in os.walk(base_dir):
+        for file in sorted(files):
+            if file.endswith('.pptx'):
+                if '_K_' in file:
+                    category_K_files.append(os.path.join(root, file))
+                elif '_E_' in file:
+                    category_E_files.append(os.path.join(root, file))
+    
+    return category_K_files, category_E_files
+
+
+def filter_long_files(files): # non 13sec shorts
+    return [file for file in files if '_shorts' not in file.lower()]
+
+
+def filter_short_files(files): # non 13sec shorts
+    return [file for file in files if '_shorts' in file.lower() and '_13sec' not in file.lower()]
+
+
+def filter_13sec_short_files(files):
+    return [file for file in files if '_13sec' in file.lower()]
+
+
+def sort_files_by_date(file_list, dates_on_after=None):
+    # Convert string input to date if provided, default to today's date
+    if isinstance(dates_on_after, str):
+        dates_on_after = datetime.strptime(dates_on_after, '%Y-%m-%d').date()
+    elif dates_on_after is None:
+        dates_on_after = date.today()
+
+    files_with_date = []
+    files_no_date = []
+
+    for file in file_list:
+        match = re.search(r'\d{4}-\d{2}-\d{2}', file)
+        if match:
+            date_str = match.group(0)
+            # Convert the found date string into a datetime.date object
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+            if date_obj >= dates_on_after:
+                files_with_date.append((file, date_obj))
+        else: 
+            files_no_date.append(file)
+    
+    if len(files_no_date) > 0: 
+        raise Exception('Certain files do not have a proper date in the filename')
+
+    # Sort the files by date (oldest to newest)
+    files_with_date.sort(key=lambda x: x[1])
+    return [file[0] for file in files_with_date]
+
+
+
+# ----------------------------------------------------------------------------------------------------
+# Checker
+# ----------------------------------------------------------------------------------------------------
+
+def check_filename(filename):
+    if '_K_' not in filename and '_E_' not in filename:
+        raise Exception('File name check - language type')
+    
+    if '_K' in filename and '_E' in filename:
+        raise Exception('File name check - language type')
+
+    if '_13sec' in filename: 
+        if '_shorts' not in filename: 
+            raise Exception('13sec is shorts: add _shorts in filename')
+        if '_13secs' in filename: 
+            raise Exception('Use 13sec instead of 13secs')
+    
+    if '_shor' in filename.lower():
+        if '_shorts' not in filename: 
+            raise Exception('term _shorts has to be used - not capitalized, etc')
+    
+    if '_13s' in filename.lower():
+        if '_13sec' not in filename: 
+            raise Exception('term _13sec has to be used - not capitalized, etc')
+
+    # if '_shorts' in filename:  
+    #     if '_13sec' in filename and type_of_video != 2:
+    #         raise Exception('Video type check')
+    #     elif '_13sec' not in filename and type_of_video != 1:
+    #         raise Exception('Video type check')
+    # elif type_of_video !=0: 
+    #     raise Exception('Video type check')
+
+    try:
+        DATE_GAP = 3 #days
+        # date has to be yyyy-mm-dd format, e.g., 2024-12-01
+        date = re.search(r"\d{4}-\d{2}-\d{2}", filename).group()
+        valid_date = pd.to_datetime(date, format='%Y-%m-%d', errors='raise')
+        if abs((valid_date - pd.Timestamp.now().normalize()).days) > DATE_GAP:
+            raise Exception("Check Date: too apart from today")
+    except ValueError:
+        raise Exception('Date check: not correct')
+
+    if '_13sec' in filename: 
+        return 2
+    elif '_shorts' in filename: 
+        return 1
+    else: 
+        return 0
+
+
+# ----------------------------------------------------------------------------------------------------
+# PPT file level operation: open, get/set notes, image savings, etc
+# ----------------------------------------------------------------------------------------------------
+
+# Easily open powerpoint software from python
+def open_ppt_file(ppt_path):
+    try:
+        subprocess.run(['start', 'powerpnt', ppt_path], check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred while opening the file: {e}")
+
+
+def get_notes(ppt_path):
+    ppt = Presentation(ppt_path)
+    slide_content = ''
+    for slide_number, slide in enumerate(ppt.slides):
+        if slide.notes_slide and slide.notes_slide.notes_text_frame:
+            notes = slide.notes_slide.notes_text_frame.text
+            notes = _clean_text(notes)
+            slide_content += f'<br>(p{slide_number+1}) '+ notes + '\n'
+    
+    return slide_content
+
+
+def set_notes(ppt_path, text):
+    notes = text.splitlines()
+    pattern = r"<br>\(p\d+\) "
+    ppt = Presentation(ppt_path)
+
+    if len(notes) != len(ppt.slides):
+        raise Exception('Set Note Error')
+
+    for slide_number, slide in enumerate(ppt.slides):
+        if slide.notes_slide and slide.notes_slide.notes_text_frame:
+            slide.notes_slide.notes_text_frame.text = re.sub(pattern, "", notes[slide_number])
+
+    ppt.save(ppt_path)
+
+
+def ppt_to_images(ppt_path, slide_image_root):
+    slide_folder = os.path.abspath(os.path.join(slide_image_root, os.path.basename(ppt_path).replace('.pptx', '')))
+    os.makedirs(slide_folder, exist_ok=True)
+
+    # Initialize PowerPoint
+    ppt_app = win32com.client.Dispatch("PowerPoint.Application")
+    presentation = ppt_app.Presentations.Open(ppt_path, WithWindow=False)
+
+    # Loop through slides and save each as an image
+    for i, slide in enumerate(presentation.Slides):
+        image_path = os.path.join(slide_folder, f'slide{i}.png')
+        slide.Export(image_path, "PNG")
+        # print(f"Saved slide {i} to {image_path}")
+
+    total_slides = len(presentation.Slides)
+
+    # Close the presentation
+    presentation.Close()
+    ppt_app.Quit()
+    return slide_folder, total_slides
+
+
+# Make a copy of E_file from K_file
+def gen_E_file(work_path, k_filename):
+    kf = os.path.join(work_path, k_filename)
+    ef = kf.replace('_K_', '_E_')
+    if not os.path.exists(ef):
+        shutil.copy(kf, ef)
+
+
+# ----------------------------------------------------------------------------------------------------
+# Batch operations on E-files
+# ----------------------------------------------------------------------------------------------------
+
+# If already not exists, creates a English copy of a Korean ppt file, and set notes with translated scripts
+# file name should have path info as well.
+def set_translated_notes(K_file, conf_file):
+    E_file = K_file.replace('_K_', '_E_')
+    if not os.path.exists(E_file):
+        shutil.copy(K_file, E_file)
+    notes = get_notes(K_file)
+    E_notes = translate_script(notes, conf_file)
+    set_notes(E_file, E_notes)
+    print(f'English copy of {os.path.basename(K_file)} completed with English notes')
+    return None
+
+
+# Applying set_translated_notes to a list
+# file list should have path info as well.
+def trans_list_of_K_files(K_list, E_list, conf_file):
+    E_list_check = E_list.copy()
+    for kf in K_list: 
+        if kf.replace('_K_', '_E_') in E_list:
+            set_translated_notes(kf, conf_file)
+            E_list_check.remove(kf.replace('_K_', '_E_'))
+        else: 
+            raise Exception('Check creation of Engfile')
+    if len(E_list_check) > 0: 
+        raise Exception('Check creation of Engfile')
+
+
 

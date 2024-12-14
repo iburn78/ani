@@ -1,15 +1,13 @@
 #%% ================================================================================
 #   ================================================================================
 from ani_tools import *
-from ist_tools import get_notes, get_desc
-import shutil
 
 # ------------------------------------------------
 # 0: wide videos
 # 1: vertical shorts
 # 2: 13 sec series
 # ------------------------------------------------
-k_ppt_file = '한국경제증발량_K_2024-12-10_shorts'
+k_ppt_file = ''
 no_fade = []
 video_param = {}
 # video_param = {
@@ -21,8 +19,7 @@ video_param = {}
 # }
 
 type_of_video = check_filename(k_ppt_file)
-###################### VID WORKING DIR Deleted.
-prep_K_file = os.path.join(VID_WORKING_DIR, k_ppt_file.replace('.pptx','')+'.pptx')
+prep_K_file = os.path.join('data/ppt', k_ppt_file.replace('.pptx','')+'.pptx')
 notes = get_notes(prep_K_file)
 [title, tags, desc] = get_desc(notes, 'K', CONF_FILE)
 k_title = title
@@ -110,14 +107,6 @@ append_to_youtube_log(k_ppt_file, k_title, k_desc, k_keywords, k_id, type_of_vid
 
 
 
-
-#%% ================================================================================
-#   ================================================================================
-# ✓ File to work-on
-# ------------------------------------------------
-prep_E_file = prep_K_file.replace('_K_', '_E_')
-if not os.path.exists(prep_E_file):
-    shutil.copy(prep_K_file, prep_E_file)
 
 #%% ================================================================================
 #   ================================================================================

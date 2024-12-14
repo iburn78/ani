@@ -1,10 +1,7 @@
 #%%
 from ani_tools import *
-from ist_tools import get_notes, get_desc
-import shutil
-import sys
 
-class VProcessor:
+class VidProcess:
     MAX_SHORTS_TIME = 59
     MAX_13SEC_TIME = 20
     UNLIMITED = 10000
@@ -41,7 +38,7 @@ class VProcessor:
             **video_param,
             )
 
-        self.max_length = VProcessor.MAX_SHORTS_TIME if self.type_of_video == 1 else VProcessor.MAX_13SEC_TIME if self.type_of_video == 2 else VProcessor.UNLIMITED 
+        self.max_length = VidProcess.MAX_SHORTS_TIME if self.type_of_video == 1 else VidProcess.MAX_13SEC_TIME if self.type_of_video == 2 else VidProcess.UNLIMITED 
         self.conf_file = conf_file
         self.google_client = google_client
         self.thumbnail_file_k = None
@@ -68,21 +65,26 @@ class VProcessor:
             print('----------------------------------------------------------------------')
             print(f'Total Duration {round(total_duration,1)} is over the limit {self.max_length}.')
             print('----------------------------------------------------------------------')
-            sys.exit(0)
+            return False
+        return True
 
     def gen_K_video(self):
         num = ppt_to_text(self.k_meta)
         timepoints, total_duration = ppt_tts(self.k_meta, num)
-        self.check_duration(total_duration)
+        if self.check_duration(total_duration) == False: 
+            return False
         save_ppt_as_images(self.k_meta)
         composite_video_from_ppt_and_voice(self.k_meta, timepoints)
+        return True
 
     def gen_E_video(self):
         num = gen_Eng_notes_from_Korean(self.e_meta, CONF_FILE)
         timepoints, total_duration = ppt_tts(self.e_meta, num)
-        self.check_duration(total_duration)
+        if self.check_duration(total_duration) == False: 
+            return False
         save_ppt_as_images(self.e_meta)
         composite_video_from_ppt_and_voice(self.e_meta, timepoints)
+        return True
 
     def gen_K_prep(self):
         notes = get_notes(os.path.join(self.k_meta.ppt_path, self.k_ppt_file))
@@ -119,17 +121,14 @@ class VProcessor:
         if tags: 
             self.e_keywords = list(tags.replace('#','').strip().split(' '))
 
-    def gen_E_file(self):
-        if not os.path.exists(self.e_ppt_file):
-            shutil.copy(self.k_ppt_file, self.e_ppt_file)
-
     def process_K_video(self, k_info=None):
         if exist_in_youtube_log(self.k_ppt_file):
             self.k_title, self.k_desc = get_record_from_youtube_log(self.k_ppt_file)
             self.k_keywords = re.findall(r"#(\w+)", self.k_desc)
             print('Korean version upload already done.')
             return None
-        self.gen_K_video()
+        if self.gen_K_video() == False: 
+            return None
         if k_info:
             title = k_info['title']
             desc = k_info['desc']
@@ -155,13 +154,14 @@ class VProcessor:
                 user_input = input("Proceed to upload? (yes/no)").strip().lower()
         self.k_id = upload_video(self.k_meta, self.k_title, self.k_desc, self.k_keywords, thumbnail_file=self.thumbnail_file_k, client_secrets_file=self.google_client, playlist_id=self.playlist_id_qp)
         append_to_youtube_log(self.k_ppt_file, self.k_title, self.k_desc, self.k_keywords, self.k_id, self.type_of_video)
-        self.gen_E_file()
+        gen_E_file(self.k_meta.ppt_path, self.k_meta.ppt_file)
 
     def process_E_video(self, e_info=None):
         if exist_in_youtube_log(self.e_ppt_file):
             print('English version upload already done.')
             return None
-        self.gen_E_video()
+        if self.gen_E_video() == False: 
+            return None
         if e_info:
             title = e_info['title']
             desc = e_info['desc']
@@ -211,5 +211,5 @@ if __name__ == "__main__":
     # k_info['tags'] = ''  # hash tag string
     k_info = None
     speaking_rate_param = {}
-    vp = VProcessor(k_ppt_file, no_fade, video_param, speaking_rate_param)
+    vp = VidProcess(k_ppt_file, no_fade, video_param, speaking_rate_param)
     vp.process(k_info=k_info, e_info=None)
