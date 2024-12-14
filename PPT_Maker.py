@@ -82,7 +82,7 @@ class PPT_MAKER:
         return target_db
 
     def generate_target_filename(self, target_db):
-        return f"{target_db['name'].values[0]}_{target_db['lang'].values[0]}_{target_db['date'].values[0]}_{target_db['suffix'].values[0]}.pptx"
+        return f"{target_db['name'].iloc[0]}_{target_db['lang'].iloc[0]}_{target_db['date'].iloc[0]}_{target_db['suffix'].iloc[0]}.pptx"
 
     def validate_target_filename(self):
         if self.target_pptx_name == PPT_MAKER.BLANK_FILE_NAME:

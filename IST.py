@@ -114,10 +114,10 @@ class IST:  # IssueTracker Handler
         vid_obj = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'id']
 
         if len(vid_obj) == 1: 
-            vlink = f'https://youtu.be/{vid_obj.values[0]}'
-            vtitle = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'title'].values[0].strip()
-            vdesc = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'desc'].values[0].strip()
-            vtags = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'keywords'].values[0].strip()
+            vlink = f'https://youtu.be/{vid_obj.iloc[0]}'
+            vtitle = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'title'].iloc[0].strip()
+            vdesc = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'desc'].iloc[0].strip()
+            vtags = youtube_log_df.loc[youtube_log_df['filename']==os.path.basename(ppt_path), 'keywords'].iloc[0].strip()
         else: 
             vlink = ''
             raise Exception('Check Video Link')
