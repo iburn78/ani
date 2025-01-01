@@ -2,37 +2,57 @@
 import os
 import pandas as pd
 from pptx import Presentation
+from pptx.dml.color import RGBColor
 from PIL import Image
 import win32com.client
+import math
+from ani_tools import open_ppt_file
+import re
 
 WORKING_DIR = 'data/ppt/'
+
 
 # reading a content DB, and make a ppt file for a given v_id
 # defining procedure and format within the class for a given blank template
 class PPT_MAKER:
     BLANK_FILE_NAME = 'blank.pptx'
     CONTENT_DB_FILENAME = 'content_db.xlsx'
+    CONTENT_DB_COLUMNS = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
+    CONTENT_DB_SHEETNAME = 'datasheet'
     PLACEHOLDER_IDX_DICT = {
         'title': {'date': 11, 'title': 0, 'subtitle': None, 'image': None, 'desc': None},
         'image': {'date': None, 'title': 0, 'subtitle': 10, 'image': 11, 'desc': 12},
         'bullet': {'date': None, 'title': 0, 'subtitle': 10, 'image': None, 'desc': 12},
         'close': {'date': None, 'title': 0, 'subtitle': 10, 'image': None, 'desc': None},
     }
+    FONT_SIZE_DICT = {
+        'title': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+        'image': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+        'bullet': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+        'close': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+    }
+    COLOR_DICT = {
+        "orange": (255, 165, 0),
+        "dark_blue": (0, 0, 139),
+        "green": (0, 128, 0),
+        "dark_green": (0, 100, 0)
+    }
 
-    def __init__(self, v_id, target_filename=None, working_dir=WORKING_DIR):
-        self.working_dir = working_dir
-        self.prs = Presentation(self.get_file_path(PPT_MAKER.BLANK_FILE_NAME))
-        self.content_db = self.read_content_db(self.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME))
+    def __init__(self, v_id, target_filename=None):
+        self.prs = Presentation(PPT_MAKER.get_file_path(PPT_MAKER.BLANK_FILE_NAME))
+        self.content_db = PPT_MAKER.read_content_db(PPT_MAKER.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME))
         if self.get_target_db(v_id, target_filename):
             print(f'Target_db creation successful for {self.target_pptx_name} with length {len(self.target_db)}.')
 
-    def get_file_path(self, filename):
-        return os.path.join(self.working_dir, filename)
+    @staticmethod
+    def get_file_path(filename):
+        return os.path.join(WORKING_DIR, filename)
 
-    def read_content_db(self, excel_path):
+    @staticmethod
+    def read_content_db(excel_path):
         # DB structure
-        sheet_name = 'datasheet'
-        preset_columns = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"]
+        sheet_name = PPT_MAKER.CONTENT_DB_SHEETNAME
+        preset_columns = PPT_MAKER.CONTENT_DB_COLUMNS
 
         if os.path.exists(excel_path):
             df = pd.read_excel(excel_path, sheet_name=sheet_name)
@@ -93,18 +113,94 @@ class PPT_MAKER:
             slide = self.prs.slides.add_slide(self.get_slide_type(row['type']))
             self.populate_slide_with_data(slide, row)
             self.add_image_to_slide(slide, row)
+            self.set_note(slide, row)
 
         PPT_MAKER.close_ppt_if_saved(self.target_pptx_name)
-        self.prs.save(self.get_file_path(self.target_pptx_name))
+        self.final_ppt_path_filename = PPT_MAKER.get_file_path(self.target_pptx_name)
+        self.prs.save(self.final_ppt_path_filename)
         print("PPT save completed ---- ")
 
     def populate_slide_with_data(self, slide, row):
         tdict = PPT_MAKER.PLACEHOLDER_IDX_DICT[row['type']]
         for i in ['date', 'title', 'subtitle', 'desc']:
-            if tdict[i] is not None: # should not None explictly!
-                tph = next((obj for obj in slide.placeholders if obj.placeholder_format.idx == tdict[i]), None)
-                if tph:
-                    tph.text = row[i]
+            if tdict[i] is None: continue # should check None explictly, cause value 0 is used too!
+            tph = next((obj for obj in slide.placeholders if obj.placeholder_format.idx == tdict[i]), None)
+            if tph and tph.text_frame:
+                value = row[i]
+                # Check for NaN and None explicitly
+                if value is None or (isinstance(value, str) and value.replace('\n','').strip() == "") or (isinstance(value, float) and math.isnan(value)): 
+                    slide.shapes._spTree.remove(tph._element)
+                    continue
+                else: 
+                    value = str(value).strip()
+
+                text_frame = tph.text_frame
+                text_frame.clear()  # Clear the existing text
+                # text wrapping works only for English words
+                text_frame.word_wrap = True
+                # first paragraph is always given
+                paragraph = text_frame.paragraphs[0]  # Get the first paragraph
+                font_size_pt = PPT_MAKER.FONT_SIZE_DICT[row['type']][i]
+
+                if row['type'] == 'bullet' and i == 'desc':
+                    bullet_pattern = r'^\[\s*(.*?)\s*\]$'  #  [whatever text]
+                    lines = PPT_MAKER.text_wrapper(value, font_size_pt, tph.width).split('\n')
+                    for line in lines:
+                        run = paragraph.add_run() 
+                        match = re.match(bullet_pattern, line.strip())
+                        if match:
+                            run.text='\u25A0 '+match.group(1)+'\n'
+                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(*PPT_MAKER.COLOR_DICT['dark_blue'])
+                        else: 
+                            run.text=line+'\n'
+                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-2)
+                            run.font.bold = False
+                else: 
+                    run = paragraph.add_run()  # Get the first run of the paragraph
+                    run.text = PPT_MAKER.text_wrapper(value, font_size_pt, tph.width)
+                    run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
+
+    @staticmethod
+    def pt_to_emu(pt):
+        return int(pt * 12700) # 914400 EMUs per inch, 72 points per inch
+
+    @staticmethod
+    def text_wrapper(text, fontsize, width): # fontsize is in pt (height), width is in EMU
+        # Font size is Height of the font, not width
+        WIDTH_ADJUSTMENT = 0.84  # Apply % of the width for text
+        fontsize = WIDTH_ADJUSTMENT*fontsize # Adjust the font size to fit the width
+        width_in_pt = (width / 914400) * 72
+        max_line_width = width_in_pt * 0.96  # Apply 95% of the width for text
+
+        lines = []
+    
+        for pg in text.split("\n"):
+            words = pg.split()
+            current_line = ""
+            current_length = 0  # Track the length of the current line in points
+        
+            for word in words:
+                # Calculate the word length in points
+                word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize/2 for char in word) + fontsize/2  # Add space width
+            
+                # Check if adding the word exceeds the max width
+                if current_length + word_length > max_line_width:
+                    # Append the current line and reset
+                    lines.append(current_line.strip())
+                    current_line = word
+                    current_length = word_length
+                else:
+                    # Add the word to the current line
+                    current_line += " " + word
+                    current_length += word_length
+        
+            # Add the last line of the paragraph
+            lines.append(current_line.strip())
+
+        return "\n".join(lines).strip()
+
 
     def add_image_to_slide(self, slide, row):
         tdict = PPT_MAKER.PLACEHOLDER_IDX_DICT[row['type']]
@@ -122,6 +218,10 @@ class PPT_MAKER:
             new_img = Image.new("RGBA", (new_size, new_size), fill_color)
             new_img.paste(img, ((new_size - width) // 2, (new_size - height) // 2))
             new_img.save(image_path)
+
+    def set_note(self, slide, row): 
+        if slide.notes_slide and slide.notes_slide.notes_text_frame:
+            slide.notes_slide.notes_text_frame.text = str(row['note']).strip()
 
     def list_slide_layouts(self):
         for idx, layout in enumerate(self.prs.slide_layouts):
@@ -153,7 +253,7 @@ class PPT_MAKER:
                 else:
                     print(f"{ppt_filename} is not saved. Not closing.")
                 return
-        print(f"{ppt_filename} is not open.")
+        # print(f"{ppt_filename} is not open.")
 
     @staticmethod
     def replace_shape_text(shape, new_text):
@@ -196,4 +296,4 @@ if __name__ == '__main__':
     v_id = 1 
     pm = PPT_MAKER(v_id)
     pm.make_ppt()
-
+    open_ppt_file(pm.final_ppt_path_filename)

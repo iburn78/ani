@@ -244,6 +244,6 @@ class IST:  # IssueTracker Handler
 if __name__ == '__main__': 
     DATES_ON_AFTER = '2024-01-01' # None for today
     PPT_WORK_DIR = 'data/ppt'
-    CONF_FILE = '../config/config.json'
+    CONF_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config/config.json')
     ist = IST(CONF_FILE)
     ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)
