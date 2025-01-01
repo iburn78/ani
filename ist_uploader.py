@@ -7,9 +7,10 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from ani_tools import *
 
-BASE_DIR = r'C:\Users\user\projects\analysis'
+pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
+BASE_DIR = os.path.join(pd_, 'analysis')
 # Better to clean the slide image root directory before running...
-SLIDE_IMAGE_ROOT = 'C:\\Users\\user\\projects\\analysis\\temp\\'
+SLIDE_IMAGE_ROOT = os.path.join(pd_, 'analysis/temp')
 MAX_IMAGES_PER_POST = 10
 
 QP_SHORTS_Korean = 45  # Quarterly Performances -Shorts (한글본, Korean)
@@ -243,7 +244,12 @@ class IST:  # IssueTracker Handler
 
 if __name__ == '__main__': 
     DATES_ON_AFTER = '2024-01-01' # None for today
-    PPT_WORK_DIR = 'data/ppt'
-    CONF_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config/config.json')
+
+    cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
+    pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
+
+    PPT_WORK_DIR = os.path.join(cd_, 'data/ppt')
+    CONF_FILE = os.path.join(pd_, 'config/config.json')
+
     ist = IST(CONF_FILE)
     ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)

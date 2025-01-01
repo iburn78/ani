@@ -15,11 +15,12 @@ import re
 import subprocess
 import shutil
 
-GOOGLE_CLIENT = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config/google_client.json")
-YOUTUBE_CONF = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config/youtube_conf.json')
-GOOGLE_CLOUD = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config/google_cloud.json')
-CONF_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config/config.json')
-YOUTUBE_LOG = 'data/youtube_log.xlsx'
+GOOGLE_CLIENT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/google_client.json')
+YOUTUBE_CONF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/youtube_conf.json')
+GOOGLE_CLOUD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/google_cloud.json')
+CONF_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/config.json')
+cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
+YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
 
 
 # ----------------------------------------------------------------------------------------------------

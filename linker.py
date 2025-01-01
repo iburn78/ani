@@ -3,7 +3,8 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from datetime import datetime
 import os
 
-v_path = 'data/video/'
+cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
+v_path = os.path.join(cd_, 'data/video/')
 videos = sorted([f for f in os.listdir(v_path) if os.path.isfile(os.path.join(v_path, f))])
 
 clips = []

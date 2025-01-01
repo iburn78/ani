@@ -9,8 +9,8 @@ import math
 from ani_tools import open_ppt_file
 import re
 
-WORKING_DIR = 'data/ppt/'
-
+cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
+WORKING_DIR = os.path.join(cd_, 'data/ppt/')
 
 # reading a content DB, and make a ppt file for a given v_id
 # defining procedure and format within the class for a given blank template

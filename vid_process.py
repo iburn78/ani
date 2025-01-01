@@ -2,6 +2,7 @@
 from ani_tools import *
 
 class VidProcess:
+    # 'data/ppt', 'data/voice' folder should be in the same directory as this script
     MAX_SHORTS_TIME = 59
     MAX_13SEC_TIME = 20
     UNLIMITED = 10000
