@@ -5,6 +5,8 @@ import os
 
 cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
 v_path = os.path.join(cd_, 'data/video/')
+p_path = os.path.join(cd_, 'data/ppt/')
+m_ptah = os.path.join(cd_, 'data/audio/')
 videos = sorted([f for f in os.listdir(v_path) if os.path.isfile(os.path.join(v_path, f))])
 
 clips = []
@@ -23,9 +25,9 @@ final_video.write_videofile(final_output_path, codec="libx264")
 
 #%% 
 # from moviepy.editor import VideoFileClip, AudioFileClip
-# video = VideoFileClip("data/ppt/it_logo_mv.mp4")
-# music = AudioFileClip("data/ppt/Keys To Unravel - The Soundlings.mp3")
+# video = VideoFileClip(os.path.join(p_path, "it_logo_mv.mp4"))
+# music = AudioFileClip(os.path.join(m_path, "Keys To Unravel - The Soundlings.mp3"))
 # music = music.audio_fadeout(1)  # second fade-out duration
 # music = music.volumex(0.5)  # reducing only seems working < 1
 # video = video.set_audio(music)
-# video.write_videofile("data/ppt/output_video.mp4", codec="libx264", audio_codec="aac")
+# video.write_videofile(os.path.join(p_path, "output_video.mp4"), codec="libx264", audio_codec="aac")
