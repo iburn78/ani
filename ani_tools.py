@@ -14,6 +14,7 @@ import pandas as pd
 import re
 import subprocess
 import shutil
+import win32com.client
 
 GOOGLE_CLIENT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/google_client.json')
 YOUTUBE_CONF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/youtube_conf.json')
@@ -566,4 +567,29 @@ def trans_list_of_K_files(K_list, E_list, conf_file):
         raise Exception('Check creation of Engfile')
 
 
+def close_excel_if_saved(excel_filename):
+    # Connect to the Excel application
+    excel = win32com.client.Dispatch("Excel.Application")
+    for workbook in excel.Workbooks:
+        # Check if the workbook's name matches the target filename
+        if os.path.basename(workbook.FullName) == os.path.basename(excel_filename):
+            if workbook.Saved:  # Check if the workbook is saved
+                workbook.Close()
+                # print(f"{excel_filename} was saved and has been closed.")
+            else:
+                print(f"{excel_filename} is not saved. Not closing.")
+            return
+    # print(f"{excel_filename} is not open.")
 
+
+def close_ppt_if_saved(ppt_filename):
+    # Connect to PowerPoint application
+    powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+    for presentation in powerpoint.Presentations:
+        if os.path.basename(presentation.FullName) == os.path.basename(ppt_filename):
+            if presentation.Saved:
+                presentation.Close()
+            else:
+                print(f"{ppt_filename} is not saved. Not closing.")
+            return
+    # print(f"{ppt_filename} is not open.")

@@ -4,9 +4,8 @@ import pandas as pd
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from PIL import Image
-import win32com.client
 import math
-from ani_tools import open_ppt_file
+from ani_tools import open_ppt_file, close_ppt_if_saved
 import re
 
 cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
@@ -19,6 +18,7 @@ class PPT_MAKER:
     CONTENT_DB_FILENAME = 'content_db.xlsx'
     CONTENT_DB_COLUMNS = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
     CONTENT_DB_SHEETNAME = 'datasheet'
+    SLIDE_TYPE = ['title', 'image', 'bullet', 'close']
     PLACEHOLDER_IDX_DICT = {
         'title': {'date': 11, 'title': 0, 'subtitle': None, 'image': None, 'desc': None},
         'image': {'date': None, 'title': 0, 'subtitle': 10, 'image': 11, 'desc': 12},
@@ -115,7 +115,7 @@ class PPT_MAKER:
             self.add_image_to_slide(slide, row)
             self.set_note(slide, row)
 
-        PPT_MAKER.close_ppt_if_saved(self.target_pptx_name)
+        close_ppt_if_saved(self.target_pptx_name)
         self.final_ppt_path_filename = PPT_MAKER.get_file_path(self.target_pptx_name)
         self.prs.save(self.final_ppt_path_filename)
         print("PPT save completed ---- ")
@@ -221,7 +221,10 @@ class PPT_MAKER:
 
     def set_note(self, slide, row): 
         if slide.notes_slide and slide.notes_slide.notes_text_frame:
-            slide.notes_slide.notes_text_frame.text = str(row['note']).strip()
+            value = row['note']
+            if value is None or (isinstance(value, str) and value.replace('\n','').strip() == "") or (isinstance(value, float) and math.isnan(value)): 
+                value = ''
+            slide.notes_slide.notes_text_frame.text = str(value).strip()
 
     def list_slide_layouts(self):
         for idx, layout in enumerate(self.prs.slide_layouts):
@@ -241,19 +244,6 @@ class PPT_MAKER:
                 print(f"Placeholder Type: {placeholder.placeholder_format.type}")
                 if hasattr(placeholder, 'text'):
                     print(f"Placeholder Text: '{placeholder.text}'")
-
-    @staticmethod
-    def close_ppt_if_saved(ppt_filename):
-        # Connect to PowerPoint application
-        powerpoint = win32com.client.Dispatch("PowerPoint.Application")
-        for presentation in powerpoint.Presentations:
-            if os.path.basename(presentation.FullName) == ppt_filename:
-                if presentation.Saved:
-                    presentation.Close()
-                else:
-                    print(f"{ppt_filename} is not saved. Not closing.")
-                return
-        # print(f"{ppt_filename} is not open.")
 
     @staticmethod
     def replace_shape_text(shape, new_text):
@@ -293,7 +283,7 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 1 
+    v_id = 2 
     pm = PPT_MAKER(v_id)
     pm.make_ppt()
     open_ppt_file(pm.final_ppt_path_filename)
