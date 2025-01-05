@@ -19,18 +19,27 @@ class PPT_MAKER:
     CONTENT_DB_COLUMNS = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
     CONTENT_DB_SHEETNAME = 'datasheet'
     SLIDE_TYPE = ['title', 'image', 'bullet', 'close']
+    BULLET_PATTERN = r'^\[\s*(.*?)\s*\]$'  #  [whatever text]
+
     PLACEHOLDER_IDX_DICT = {
         'title': {'date': 11, 'title': 0, 'subtitle': None, 'image': None, 'desc': None},
         'image': {'date': None, 'title': 0, 'subtitle': 10, 'image': 11, 'desc': 12},
-        'bullet': {'date': None, 'title': 0, 'subtitle': 10, 'image': None, 'desc': 12},
+        'bullet': {'date': None, 'title': 0, 'subtitle': 10, 'image': None, 'desc': 12, 'market': 13, 'rank': 14}, 
         'close': {'date': None, 'title': 0, 'subtitle': 10, 'image': None, 'desc': None},
     }
-    FONT_SIZE_DICT = {
-        'title': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
-        'image': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
-        'bullet': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
-        'close': {'date': 40, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+    FONT_SIZE_DICT_K = {
+        'title': {'date': 40, 'title': 50, 'subtitle': None, 'image': None, 'desc': None},
+        'image': {'date': None, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+        'bullet': {'date': None, 'title': 50, 'subtitle': 30, 'image': None, 'desc': 25},
+        'close': {'date': None, 'title': 50, 'subtitle': 30, 'image': None, 'desc': None},
     }
+    FONT_SIZE_DICT_E = {
+        'title': {'date': 40, 'title': 42, 'subtitle': None, 'image': None, 'desc': None},
+        'image': {'date': None, 'title': 42, 'subtitle': 27, 'image': None, 'desc': 22},
+        'bullet': {'date': None, 'title': 42, 'subtitle': 27, 'image': None, 'desc': 22},
+        'close': {'date': None, 'title': 42, 'subtitle': 27, 'image': None, 'desc': None},
+    }
+    EXP_FONT_REDUCTION = 2 # in desc paragraph, font size above is for title in [ ]. detailed exp has EXP_FONT_REDUCTION amount less than this
     COLOR_DICT = {
         "orange": (255, 165, 0),
         "dark_blue": (0, 0, 139),
@@ -38,10 +47,13 @@ class PPT_MAKER:
         "dark_green": (0, 100, 0)
     }
 
-    def __init__(self, v_id, target_filename=None):
+    def __init__(self, v_id=None, target_filename=None):
         self.prs = Presentation(PPT_MAKER.get_file_path(PPT_MAKER.BLANK_FILE_NAME))
         self.content_db = PPT_MAKER.read_content_db(PPT_MAKER.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME))
+        if v_id == None: 
+            return 
         if self.get_target_db(v_id, target_filename):
+            self.localizer()
             print(f'Target_db creation successful for {self.target_pptx_name} with length {len(self.target_db)}.')
 
     @staticmethod
@@ -110,7 +122,7 @@ class PPT_MAKER:
 
     def make_ppt(self):
         for index, row in self.target_db.iterrows():
-            slide = self.prs.slides.add_slide(self.get_slide_type(row['type']))
+            slide = self.prs.slides.add_slide(self._get_slide_type(row['type']))
             self.populate_slide_with_data(slide, row)
             self.add_image_to_slide(slide, row)
             self.set_note(slide, row)
@@ -131,8 +143,7 @@ class PPT_MAKER:
                 if value is None or (isinstance(value, str) and value.replace('\n','').strip() == "") or (isinstance(value, float) and math.isnan(value)): 
                     slide.shapes._spTree.remove(tph._element)
                     continue
-                else: 
-                    value = str(value).strip()
+                value = PPT_MAKER.text_preprocessor(value)
 
                 text_frame = tph.text_frame
                 text_frame.clear()  # Clear the existing text
@@ -140,26 +151,33 @@ class PPT_MAKER:
                 text_frame.word_wrap = True
                 # first paragraph is always given
                 paragraph = text_frame.paragraphs[0]  # Get the first paragraph
-                font_size_pt = PPT_MAKER.FONT_SIZE_DICT[row['type']][i]
 
+                if self.target_db['lang'].iloc[0] == 'K':
+                    font_size_pt = PPT_MAKER.FONT_SIZE_DICT_K[row['type']][i]
+                else: # self.target_db['lang'].iloc[0] == 'K':
+                    font_size_pt = PPT_MAKER.FONT_SIZE_DICT_E[row['type']][i]
+
+                # BULLET slide, DESC paragraph has formatting option with [ ]
+                # text_wrapper wraps words in case if Korean (in English case, it is automatically done by ppt)
                 if row['type'] == 'bullet' and i == 'desc':
-                    bullet_pattern = r'^\[\s*(.*?)\s*\]$'  #  [whatever text]
-                    lines = PPT_MAKER.text_wrapper(value, font_size_pt, tph.width).split('\n')
-                    for line in lines:
+                    # lines = self.text_wrapper(value, font_size_pt, tph.width).splitlines()
+                    # lines = self.text_wrapper(line, font_size_pt, tph.width)
+
+                    for line in value.splitlines():
                         run = paragraph.add_run() 
-                        match = re.match(bullet_pattern, line.strip())
+                        match = re.match(PPT_MAKER.BULLET_PATTERN, line)
                         if match:
-                            run.text='\u25A0 '+match.group(1)+'\n'
+                            run.text=self.text_wrapper('\u25A0 '+match.group(1), font_size_pt, tph.width)+'\n'
                             run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
                             run.font.bold = True
                             run.font.color.rgb = RGBColor(*PPT_MAKER.COLOR_DICT['dark_blue'])
                         else: 
-                            run.text=line+'\n'
-                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-2)
+                            run.text=self.text_wrapper(line, font_size_pt, tph.width)+'\n'
+                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-PPT_MAKER.EXP_FONT_REDUCTION)
                             run.font.bold = False
                 else: 
                     run = paragraph.add_run()  # Get the first run of the paragraph
-                    run.text = PPT_MAKER.text_wrapper(value, font_size_pt, tph.width)
+                    run.text = self.text_wrapper(value, font_size_pt, tph.width)
                     run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
 
     @staticmethod
@@ -167,40 +185,66 @@ class PPT_MAKER:
         return int(pt * 12700) # 914400 EMUs per inch, 72 points per inch
 
     @staticmethod
-    def text_wrapper(text, fontsize, width): # fontsize is in pt (height), width is in EMU
+    def text_preprocessor(text):
+        # Preprocessing 
+        # Add newlines around [ ] if needed and apply strip for each line
+        text = str(text).strip()
+        text = re.sub(rf'({PPT_MAKER.BULLET_PATTERN})(?!\n)', r'\1\n', text, flags=re.MULTILINE)
+        text = re.sub(rf'(?<!\n)({PPT_MAKER.BULLET_PATTERN})', r'\n\1', text, flags=re.MULTILINE)
+        # Apply strip() each line
+        text = '\n'.join(line.strip() for line in text.splitlines()).strip()
+        # Replace 3 or more newlines with 2
+        text = re.sub(r'\n{3,}', '\n\n', text)   
+        # If any line is in "" or '', remove them
+        text = '\n'.join(
+        line[1:-1] if (line.startswith('"') and line.endswith('"')) or (line.startswith("'") and line.endswith("'"))
+        else line
+        for line in text.splitlines()
+        )
+
+        return text
+
+    def text_wrapper(self, text, fontsize, width): # fontsize is in pt (height), width is in EMU
+        # process only in Korean case
+        if self.target_db['lang'].iloc[0] != 'K':
+            return text
+        
         # Font size is Height of the font, not width
         WIDTH_ADJUSTMENT = 0.84  # Apply % of the width for text
         fontsize = WIDTH_ADJUSTMENT*fontsize # Adjust the font size to fit the width
         width_in_pt = (width / 914400) * 72
-        max_line_width = width_in_pt * 0.96  # Apply 95% of the width for text
+        max_line_width = width_in_pt * 0.93  # Apply 95% of the width for text
 
         lines = []
     
-        for pg in text.split("\n"):
-            words = pg.split()
-            current_line = ""
-            current_length = 0  # Track the length of the current line in points
+        for pg in text.splitlines():  # pg stands for paragraph
+            # if pg matches BULLET_PATTERN leave it as a line 
+            if re.match(rf'({PPT_MAKER.BULLET_PATTERN})', pg):
+                current_line = pg
+            else: 
+                words = pg.split()
+                current_line = ""
+                current_length = 0  # Track the length of the current line in points
         
-            for word in words:
-                # Calculate the word length in points
-                word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize/2 for char in word) + fontsize/2  # Add space width
+                for word in words:
+                    # Calculate the word length in points
+                    word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize/2 for char in word) + fontsize/2  # Add space width
             
-                # Check if adding the word exceeds the max width
-                if current_length + word_length > max_line_width:
-                    # Append the current line and reset
-                    lines.append(current_line.strip())
-                    current_line = word
-                    current_length = word_length
-                else:
-                    # Add the word to the current line
-                    current_line += " " + word
-                    current_length += word_length
+                    # Check if adding the word exceeds the max width
+                    if current_length + word_length > max_line_width:
+                        # Append the current line and reset
+                        lines.append(current_line.strip())
+                        current_line = word
+                        current_length = word_length
+                    else:
+                        # Add the word to the current line
+                        current_line += " " + word
+                        current_length += word_length
         
             # Add the last line of the paragraph
             lines.append(current_line.strip())
 
         return "\n".join(lines).strip()
-
 
     def add_image_to_slide(self, slide, row):
         tdict = PPT_MAKER.PLACEHOLDER_IDX_DICT[row['type']]
@@ -226,14 +270,29 @@ class PPT_MAKER:
                 value = ''
             slide.notes_slide.notes_text_frame.text = str(value).strip()
 
-    def list_slide_layouts(self):
-        for idx, layout in enumerate(self.prs.slide_layouts):
-            print(f"Layout {idx}: {layout.name}")
+    def localizer(self):
+        title_layout = self._get_slide_type('title')
+        # Change the intro 
+        hd = [s for s in title_layout.shapes if s.name == 'TextBox 2'][0]
+    
+        # Get the first paragraph and the first run
+        # this is to keep the formating of the textbox
+        tg_run = hd.text_frame.paragraphs[0].runs[0]
 
-    def get_slide_type(self, type):
+        if self.target_db['lang'].iloc[0] == 'K':
+            tg_run.text = '13초컷 - 회사 하나 공부하자!'
+        else: 
+            tg_run.text = "13sec cut - Learn a company!"
+        ### ADD MORE LOCALIZE SET UPS HERE ###
+
+    def _get_slide_type(self, type):
         for idx, layout in enumerate(self.prs.slide_layouts):
             if type in layout.name: 
                 return layout
+
+    def list_slide_layouts(self):
+        for idx, layout in enumerate(self.prs.slide_layouts):
+            print(f"Layout {idx}: {layout.name}")
 
     def print_placeholder_idx(self): 
         for slide_number, slide in enumerate(self.prs.slides, start=0):
@@ -283,7 +342,7 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 2 
+    v_id = 23 
     pm = PPT_MAKER(v_id)
     pm.make_ppt()
     open_ppt_file(pm.final_ppt_path_filename)
