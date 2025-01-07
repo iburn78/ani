@@ -19,8 +19,10 @@ class PPT_MAKER:
     CONTENT_DB_COLUMNS = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
     CONTENT_DB_SHEETNAME = 'datasheet'
     SLIDE_TYPE = ['title', 'image', 'bullet', 'close']
-    BULLET_PATTERN = r'^\[\s*(.*?)\s*\]$'  #  [whatever text]
+    BULLET_PATTERN = r'^\[\s*(.*?)\s*\]$'  #  [whatever text] at the start of a line [, and end of a line ]
+    SUPPLEMENT_PATTERN = r'\<\s*(.*?)\s*\>'  #  <whatever text>
 
+    # CUSTOM SETTINGS
     PLACEHOLDER_IDX_DICT = {
         'title': {'date': 11, 'title': 0, 'subtitle': None, 'image': None, 'desc': None},
         'image': {'date': None, 'title': 0, 'subtitle': 10, 'image': 11, 'desc': 12},
@@ -39,13 +41,20 @@ class PPT_MAKER:
         'bullet': {'date': None, 'title': 42, 'subtitle': 27, 'image': None, 'desc': 22},
         'close': {'date': None, 'title': 42, 'subtitle': 27, 'image': None, 'desc': None},
     }
-    EXP_FONT_REDUCTION = 2 # in desc paragraph, font size above is for title in [ ]. detailed exp has EXP_FONT_REDUCTION amount less than this
+    EXT_FONT_REDUCTION = 3 # in bullet paragraph, font size above is for title in [ ]. detailed exp has EXT_FONT_REDUCTION amount less than this. Also usedin in ( ) too.
+
     COLOR_DICT = {
         "orange": (255, 165, 0),
         "dark_blue": (0, 0, 139),
         "green": (0, 128, 0),
-        "dark_green": (0, 100, 0)
+        "dark_green": (0, 100, 0),
+        "light_gray": (169, 169, 169),
+        "dark_gray": (40, 40, 40),
     }
+
+    INTRO_K = '13초컷 - 회사 하나 공부하자!'
+    INTRO_E = '13sec cut - Learn a company!'
+    INTRO_TEXTBOX_NAME = 'TextBox 2'
 
     def __init__(self, v_id=None, target_filename=None):
         self.prs = Presentation(PPT_MAKER.get_file_path(PPT_MAKER.BLANK_FILE_NAME))
@@ -160,12 +169,9 @@ class PPT_MAKER:
                 # BULLET slide, DESC paragraph has formatting option with [ ]
                 # text_wrapper wraps words in case if Korean (in English case, it is automatically done by ppt)
                 if row['type'] == 'bullet' and i == 'desc':
-                    # lines = self.text_wrapper(value, font_size_pt, tph.width).splitlines()
-                    # lines = self.text_wrapper(line, font_size_pt, tph.width)
-
                     for line in value.splitlines():
                         run = paragraph.add_run() 
-                        match = re.match(PPT_MAKER.BULLET_PATTERN, line)
+                        match = re.match(PPT_MAKER.BULLET_PATTERN, line) # match only from the start of the line
                         if match:
                             run.text=self.text_wrapper('\u25A0 '+match.group(1), font_size_pt, tph.width)+'\n'
                             run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
@@ -173,12 +179,24 @@ class PPT_MAKER:
                             run.font.color.rgb = RGBColor(*PPT_MAKER.COLOR_DICT['dark_blue'])
                         else: 
                             run.text=self.text_wrapper(line, font_size_pt, tph.width)+'\n'
-                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-PPT_MAKER.EXP_FONT_REDUCTION)
+                            run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-PPT_MAKER.EXT_FONT_REDUCTION)
                             run.font.bold = False
                 else: 
+                    search = re.search(PPT_MAKER.SUPPLEMENT_PATTERN, value)
+                    value = re.sub(PPT_MAKER.SUPPLEMENT_PATTERN, "", value)
                     run = paragraph.add_run()  # Get the first run of the paragraph
-                    run.text = self.text_wrapper(value, font_size_pt, tph.width)
+                    text_wrapped = self.text_wrapper(value, font_size_pt, tph.width) 
+                    run.text = text_wrapped
                     run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
+                    if search:
+                        run = paragraph.add_run()  
+                        if self.target_db['lang'].iloc[0] != 'K' or len(text_wrapped.splitlines()) != 1:
+                            run.text = ' ('+search.group(1)+')'
+                        else: 
+                            run.text =  '\n('+search.group(1)+')'
+                        run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-PPT_MAKER.EXT_FONT_REDUCTION)
+                        run.font.color.rgb = RGBColor(*PPT_MAKER.COLOR_DICT['dark_gray'])
+                        run.font.bold = False
 
     @staticmethod
     def pt_to_emu(pt):
@@ -273,16 +291,16 @@ class PPT_MAKER:
     def localizer(self):
         title_layout = self._get_slide_type('title')
         # Change the intro 
-        hd = [s for s in title_layout.shapes if s.name == 'TextBox 2'][0]
+        hd = [s for s in title_layout.shapes if s.name == PPT_MAKER.INTRO_TEXTBOX_NAME][0]
     
         # Get the first paragraph and the first run
         # this is to keep the formating of the textbox
         tg_run = hd.text_frame.paragraphs[0].runs[0]
 
         if self.target_db['lang'].iloc[0] == 'K':
-            tg_run.text = '13초컷 - 회사 하나 공부하자!'
+            tg_run.text = PPT_MAKER.INTRO_K
         else: 
-            tg_run.text = "13sec cut - Learn a company!"
+            tg_run.text = PPT_MAKER.INTRO_E
         ### ADD MORE LOCALIZE SET UPS HERE ###
 
     def _get_slide_type(self, type):
@@ -342,7 +360,7 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 23 
+    v_id = 21 
     pm = PPT_MAKER(v_id)
     pm.make_ppt()
     open_ppt_file(pm.final_ppt_path_filename)
