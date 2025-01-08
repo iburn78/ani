@@ -1,10 +1,13 @@
 #%%
 from ani_tools import *
 
+PPT_PATH = 'data/ppt/ppts/'
+VOICE_PATH = 'data/voice/'
+
 class VidProcess:
-    # 'data/ppt', 'data/voice' folder should be in the same directory as this script
+
     MAX_SHORTS_TIME = 59
-    MAX_13SEC_TIME = 20
+    MAX_13SEC_TIME = 59
     UNLIMITED = 10000
     # ------------------------------------------------
     # 0: wide videos
@@ -20,13 +23,15 @@ class VidProcess:
         speaking_rate_KR = speaking_rate_param.get('speaking_rate_KR', 1.2)
         speaking_rate_EN = speaking_rate_param.get('speaking_rate_EN', 1.2)
         if self.type_of_video == 2:
-            speaking_rate_param['slide_break'] = 0.1
-            speaking_rate_param['line_break'] = 0.1
+            speaking_rate_param['slide_break'] = 0.7
+            speaking_rate_param['line_break'] = 0.4
 
         self.k_meta = Meta(
             ppt_file=self.k_ppt_file, google_application_credentials=gca, lang='K',
             fade_after_slide=fade_after_slide,
             speaking_rate_KR=speaking_rate_KR, 
+            ppt_path = PPT_PATH,
+            voice_path= VOICE_PATH,
             **speaking_rate_param,
             **video_param,
             )
@@ -35,6 +40,8 @@ class VidProcess:
             ppt_file=self.e_ppt_file, google_application_credentials=gca, lang='E', 
             fade_after_slide=fade_after_slide,
             speaking_rate_EN=speaking_rate_EN, 
+            ppt_path = PPT_PATH,
+            voice_path= VOICE_PATH,
             **speaking_rate_param,
             **video_param,
             )
@@ -73,16 +80,21 @@ class VidProcess:
         num = ppt_to_text(self.k_meta)
         timepoints, total_duration = ppt_tts(self.k_meta, num)
         if self.check_duration(total_duration) == False: 
-            return False
+            raise Exception('Duration Error ---- ')
+            # return False
         save_ppt_as_images(self.k_meta)
         composite_video_from_ppt_and_voice(self.k_meta, timepoints)
         return True
 
-    def gen_E_video(self):
-        num = gen_Eng_notes_from_Korean(self.e_meta, CONF_FILE)
+    def gen_E_video(self, translate = True):
+        if translate:
+            num = gen_Eng_notes_from_Korean(self.e_meta, CONF_FILE)  # if notes are not translated in the E-PPT-file, this translates notes only therein.
+        else:
+            num = ppt_to_text(self.e_meta)
         timepoints, total_duration = ppt_tts(self.e_meta, num)
         if self.check_duration(total_duration) == False: 
-            return False
+            raise Exception('Duration Error ---- ')
+            # return False
         save_ppt_as_images(self.e_meta)
         composite_video_from_ppt_and_voice(self.e_meta, timepoints)
         return True
@@ -90,6 +102,7 @@ class VidProcess:
     def gen_K_prep(self):
         notes = get_notes(os.path.join(self.k_meta.ppt_path, self.k_ppt_file))
         [title, tags, desc] = get_desc(notes, 'K', self.conf_file)
+        self.k_title_tail = title
         self.k_title = self.k_title_header + title
         self.k_desc = tags+ '\n' +desc
         self.k_keywords = list(tags.replace('#','').strip().split(' '))
@@ -99,8 +112,16 @@ class VidProcess:
         print(self.k_keywords)
 
     def gen_E_prep(self):
-        self.e_title, self.e_desc = translate_title_desc(self.k_title, self.k_desc, self.conf_file)
-        self.e_keywords = re.findall(r"#(\w+)", self.e_desc)
+        if self.k_title_tail != None and len(self.k_title) > 0:
+            self.e_title_tail, self.e_desc = translate_title_desc(self.k_title_tail, self.k_desc, self.conf_file)
+            self.e_title = self.e_title_header + self.e_title_tail
+            self.e_keywords = re.findall(r"#(\w+)", self.e_desc)
+        else: 
+            notes = get_notes(os.path.join(self.e_meta.ppt_path, self.e_ppt_file))
+            [title, tags, desc] = get_desc(notes, 'E', self.conf_file)
+            self.e_title = self.e_title_header + title
+            self.e_desc = tags+ '\n' +desc
+            self.e_keywords = list(tags.replace('#','').strip().split(' '))
         print('--------------------')
         print(self.e_title)
         print(self.e_desc)
@@ -129,6 +150,7 @@ class VidProcess:
             print('Korean version upload already done.')
             return None
         if self.gen_K_video() == False: 
+            print('K-video creation failed')
             return None
         if k_info:
             title = k_info['title']
@@ -140,28 +162,20 @@ class VidProcess:
             print(self.k_keywords)
         else:
             self.gen_K_prep()
-            user_input = input("Title, Desc, and Tags acceptable, and proceed to upload? (yes/no/exit): ").strip().lower()
-            while user_input not in ['yes', 'y']:
-                if user_input == 'exit': 
-                    return None
-                title = input('Title: ')
-                desc = input('Desc: ')
-                tags = input('Tags-hashtag words: ')
-                self.set_K_prep(title, desc, tags)
-                print('--------------------')
-                print(self.k_title)
-                print(self.k_desc)
-                print(self.k_keywords)
-                user_input = input("Proceed to upload? (yes/no)").strip().lower()
-        self.k_id = upload_video(self.k_meta, self.k_title, self.k_desc, self.k_keywords, thumbnail_file=self.thumbnail_file_k, client_secrets_file=self.google_client, playlist_id=self.playlist_id_qp)
-        append_to_youtube_log(self.k_ppt_file, self.k_title, self.k_desc, self.k_keywords, self.k_id, self.type_of_video)
-        gen_E_file(self.k_meta.ppt_path, self.k_meta.ppt_file)
+            return
 
     def process_E_video(self, e_info=None):
+        # 13 sec videos are already translated...
+        if self.type_of_video == 2:
+            translate = False
+        else: 
+            translate = True
+
         if exist_in_youtube_log(self.e_ppt_file):
             print('English version upload already done.')
             return None
-        if self.gen_E_video() == False: 
+        if self.gen_E_video(translate=translate) == False: 
+            print('E-video creation failed')
             return None
         if e_info:
             title = e_info['title']
@@ -173,32 +187,26 @@ class VidProcess:
             print(self.e_keywords)
         else:
             self.gen_E_prep()
-            user_input = input("Title, Desc, and Tags acceptable, and proceed to upload? (yes/no/exit): ").strip().lower()
-            while user_input not in ['yes', 'y']:
-                if user_input == 'exit': 
-                    return None
-                title = input('Title: ')
-                desc = input('Desc: ')
-                tags = input('Tags-hashtag words: ')
-                self.set_E_prep(title, desc, tags)
-                print('--------------------')
-                print(self.e_title)
-                print(self.e_desc)
-                print(self.e_keywords)
-                user_input = input("Proceed to upload? (yes/no)").strip().lower()
-            self.e_id = upload_video(self.e_meta, self.e_title, self.e_desc, self.e_keywords, thumbnail_file=self.thumbnail_file_e, client_secrets_file=self.google_client, playlist_id=self.playlist_id_it)
-            append_to_youtube_log(self.e_ppt_file, self.e_title, self.e_desc, self.e_keywords, self.e_id, self.type_of_video)
+            return
     
-    def process(self, k_info=None, e_info=None): 
-        self.process_K_video(k_info)
-        self.process_E_video(e_info)
+    def upload_K_video(self):
+        self.k_id = upload_video(self.k_meta, self.k_title, self.k_desc, self.k_keywords, thumbnail_file=self.thumbnail_file_k, client_secrets_file=self.google_client, playlist_id=self.playlist_id_qp)
+        append_to_youtube_log(self.k_ppt_file, self.k_title, self.k_desc, self.k_keywords, self.k_id, self.type_of_video)
+        # gen_E_file(self.k_meta.ppt_path, self.k_meta.ppt_file)
 
+    def upload_E_video(self):
+        self.e_id = upload_video(self.e_meta, self.e_title, self.e_desc, self.e_keywords, thumbnail_file=self.thumbnail_file_e, client_secrets_file=self.google_client, playlist_id=self.playlist_id_it)
+        append_to_youtube_log(self.e_ppt_file, self.e_title, self.e_desc, self.e_keywords, self.e_id, self.type_of_video)
 
+    ### USAGE Guide ################
+    # k_info = {} (or e_info)
+    # k_info['title'] = ''
+    # k_info['desc'] = ''
+    # k_info['tags'] = ''  # hash tag string
 
-if __name__ == "__main__": 
-    k_ppt_file = ''
-    no_fade = []
-    video_param = {}
+    # no_fade = []
+    # video_param = {}
+    # speaking_rate_param = {}
     # video_param = {
     #     "target_slide_for_video": [1, 4, 6], # slide starts from 0
     #     "video_file_path": ['index_KR.mp4', 'index_us.mp4', 'index_other.mp4'],
@@ -206,11 +214,19 @@ if __name__ == "__main__":
     #     "video_location": [(30, 250), (30, 250), (30, 250)],  # list of (x, y)
     #     "video_interrupt": False,
     # }
-    # k_info = {}
-    # k_info['title'] = ''
-    # k_info['desc'] = ''
-    # k_info['tags'] = ''  # hash tag string
-    k_info = None
-    speaking_rate_param = {}
-    vp = VidProcess(k_ppt_file, no_fade, video_param, speaking_rate_param)
-    vp.process(k_info=k_info, e_info=None)
+
+    # Always initialize with K-file name
+    # k_ppt_file = ''
+    # vp = VidProcess(k_ppt_file)
+    # vp.process()
+
+if __name__ == "__main__": 
+    k_ppt_file = 'SK하이닉스_K_2025-01-08_shorts_13sec'
+
+    vp = VidProcess(k_ppt_file)
+    vp.process_K_video()
+    vp.process_E_video()
+    #%% 
+    # ppt_tts(vp.k_meta,1)
+    # vp.upload_K_video()
+    # vp.upload_E_video()

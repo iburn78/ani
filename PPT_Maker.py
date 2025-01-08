@@ -229,13 +229,16 @@ class PPT_MAKER:
     # In English case, it is automatically done by ppt. However, below applied in English as well for consistency
     def text_wrapper(self, text, fontsize, width): # fontsize is in pt (height), width is in EMU
         if self.target_db['lang'].iloc[0] == 'K':
-            FONT_WIDTH_ADJUSTMENT = 0.80  # Apply []% to the height for width calculation
-            TEXTBOX_WIDTH_MARGIN = 0.80
+            FONT_WIDTH_ADJUSTMENT = 0.82  # Apply []% to the height for width calculation
+            TEXTBOX_WIDTH_MARGIN = 0.85
         else: 
             # return text # if you don't want to apply text wrapper in English case
-            FONT_WIDTH_ADJUSTMENT = 0.78  # Apply []% to the height for width calculation
-            TEXTBOX_WIDTH_MARGIN = 0.72
-        
+            FONT_WIDTH_ADJUSTMENT = 0.77  # Apply []% to the height for width calculation
+            TEXTBOX_WIDTH_MARGIN = 0.85
+
+        bullet_to_font_size = 1.2 
+        Eng_to_Kor_size = 0.67
+        space_to_font_size = 0.25
         # Font size is Height of the font, not width
         fontsize = FONT_WIDTH_ADJUSTMENT*fontsize # Adjust the font size to fit the width
         width_in_pt = (width / 914400) * 72
@@ -250,7 +253,7 @@ class PPT_MAKER:
         
             for word in words:
                 # Calculate the word length in points
-                word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize*1.5 if char ==  PPT_MAKER.BULLET else fontsize/2 for char in word) + fontsize/2.5  # Add space width
+                word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize*bullet_to_font_size if char ==  PPT_MAKER.BULLET else fontsize*Eng_to_Kor_size for char in word) + fontsize*space_to_font_size  # Add space width
             
                 # Check if adding the word exceeds the max width
                 if current_length + word_length > max_line_width:
@@ -364,6 +367,6 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 2 
+    v_id = 2
     pm = PPT_MAKER(v_id)
     open_ppt_file(pm.final_ppt_path_filename)

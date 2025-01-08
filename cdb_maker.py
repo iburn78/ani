@@ -1,7 +1,7 @@
 #%% 
 from ppt_maker import PPT_MAKER, WORKING_DIR
 from trader.tools.tools import get_name_from_code, get_market_and_rank, rank_counter
-from ani.ani_tools import close_excel_if_saved
+from ani.ani_tools import close_excel_if_saved, script_optimizer
 from trader.analysis.drawer import Drawer
 from openai import OpenAI
 import pandas as pd
@@ -35,15 +35,15 @@ class CDB_MAKER: #content database maker
 
     # define max words number in each element to pass to AI
     LENGTH_K_DICT = {
-        'title': {'title': 7, 'note': 15},
-        'image': {'subtitle': 7, 'desc': 15, 'note': 25},
-        'bullet': {'title': 7, 'subtitle': 7, 'b_title': 7, 'b_desc': 20, 'note': 30},
-        'close': {'title': 7, 'subtitle': 10, 'note': 20},
+        'title': {'title': 7, 'note': 12},
+        'image': {'subtitle': 6, 'desc': 12, 'note': 20},
+        'bullet': {'title': 6, 'subtitle': 6, 'b_title': 5, 'b_desc': 15, 'note': 25},
+        'close': {'title': 6, 'subtitle': 8, 'note': 20},
     }
     LENGTH_E_DICT = {
-        'title': {'title': 5, 'note': 10},
-        'image': {'subtitle': 5, 'desc': 10, 'note': 25},
-        'bullet': {'title': 5, 'subtitle': 5, 'b_title': 5, 'b_desc': 15, 'note': 25},
+        'title': {'title': 6, 'note': 10},
+        'image': {'subtitle': 5, 'desc': 10, 'note': 15},
+        'bullet': {'title': 5, 'subtitle': 5, 'b_title': 4, 'b_desc': 12, 'note': 20},
         'close': {'title': 5, 'subtitle': 7, 'note': 15},
     }
     ########### 
@@ -244,7 +244,10 @@ class CDB_MAKER: #content database maker
                 Summarize in {lend[command_style_dict[i+1][0]]} words at most. Use facts and details therein, and avoid abstract expressions and hype words.
 
                 ''')+raw_response[i]+'\n'
-            response.append(self.post_process(self._get_AI_response(command, style=command_style_dict[i+1][1])))
+            if command_style_dict[i+1][0] == 'note':
+                response.append(self.post_process(self._get_AI_response(command, style=command_style_dict[i+1][1]), remove_period=False))
+            else:
+                response.append(self.post_process(self._get_AI_response(command, style=command_style_dict[i+1][1])))
         return response
 
     # combine bullet items and build them into a desc string element
@@ -285,7 +288,7 @@ class CDB_MAKER: #content database maker
         return text
 
     # applied before saving as dataframe
-    def post_process(self, text):
+    def post_process(self, text, remove_period = True):
         text = text.strip()
         # Remove unmatched single and double quotation marks (ignoring apostrophes in words)
         text = re.sub(r"(^|[^a-zA-Z0-9])'(?!\w)", r'\1', text)  # Handle unmatched single quotes
@@ -298,10 +301,11 @@ class CDB_MAKER: #content database maker
             text = text[1:-1].strip()
     
         # Remove trailing period
-        if text.endswith('.'):
+        if remove_period and text.endswith('.'):
             text = text[:-1]
     
         return text.strip()
+    
 
     def get_eng_name(self):
         command = textwrap.dedent(f'''\
@@ -358,7 +362,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[7] + f' <{market} {rank_counter(rank, lang=self.lang)}>'  # < >: interpreted by PPT MAKER
         bullet_desc = self._build_bullet_desc(response, target_content_type=content_type)
-        note = response[6]
+        note = script_optimizer(response[6])
         self.notes.append(note)
 
         res_dict = {
@@ -411,7 +415,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[7]
         bullet_desc = self._build_bullet_desc(response, target_content_type=content_type, seq=-1)
-        note = response[6]
+        note = script_optimizer(response[6])
         self.notes.append(note)
 
         res_dict = {
@@ -489,7 +493,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[0]
         desc = response[1]
-        note = response[2]
+        note = script_optimizer(response[2])
         self.notes.append(note)
 
         res_dict = {
@@ -533,7 +537,8 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         title = response[0]
         subtitle = response[1]
-        note = response[2]
+        note = script_optimizer(response[2]) 
+        note += '\n' + ('감사합니다. ' if self.lang == 'K' else 'Thank you. ')
         self.notes.append(note)
 
         res_dict = {
@@ -559,7 +564,7 @@ class CDB_MAKER: #content database maker
 
             CONTENT REQUIREMENTS:
             - Provide **exactly one line of text** for each numbered item.
-            - The company name **must be included** naturally in both line.
+            - The company name **must be included** naturally in both line 1 and line 2.
             - Primarily refer to Korean sources, using English sources only as supplementary.
             - Exclude terms like 'line n', 'business', 'strength', 'evidence', 'script', 'issue', or 'title' from the response.
             - Avoid redundant explanations, quotation marks, or additional formatting to ensure the output can be directly copied and pasted as plain text.
@@ -572,7 +577,7 @@ class CDB_MAKER: #content database maker
         }
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         title = response[0]
-        note = response[1]
+        note = script_optimizer(response[1])
 
         res_dict = {
             'slide': slide_no,
@@ -596,4 +601,4 @@ if __name__ == "__main__":
                 }
     code = '000660'
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
-    # _ = CDB_MAKER(code, 'E', ref_info)
+    _ = CDB_MAKER(code, 'E', ref_info)

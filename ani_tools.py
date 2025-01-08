@@ -593,3 +593,42 @@ def close_ppt_if_saved(ppt_filename):
                 print(f"{ppt_filename} is not saved. Not closing.")
             return
     # print(f"{ppt_filename} is not open.")
+
+
+
+
+
+# ----------------------------------------------------------------------------------------------------
+# Script Optimizer 
+# ----------------------------------------------------------------------------------------------------
+# For the voice reader to read scripts well, need to optmize the scripts.
+
+SCRIPT_DICT = {
+    'dram': 'D-ram', 
+}
+
+
+def script_optimizer(text):
+    # Regular expression to find English words with more than 3 capital letters, even if they are not standalone
+    def _convert_word(match):
+        word = match.group()
+        return word[0] + word[1:].lower()  # Capitalize only the first letter, make the rest lowercase
+
+    # Match sequences of 4 or more uppercase letters
+    # ABCD -> Abcd, etc
+    text = re.sub(r'([A-Z]{4,})(?=\b|[^a-zA-Z])', _convert_word, text)
+
+    # If any key in SCRIPT_DICT found, change it to its value (case insensitive)
+    # dram -> D-ram, Dram임 -> D-ram임, Dram's -> D-ram's, etc. However, Dramed -> no change
+    # Build a case-insensitive regex for all keys in the dictionary
+    # Works with Korean too.
+    pattern = re.compile(r'([가-힣a-zA-Z]+)', re.IGNORECASE)
+    
+    def _replacement(match):
+        word = match.group()
+        return SCRIPT_DICT.get(word.lower(), word)  # Replace if key exists, else keep the original
+
+    text = pattern.sub(_replacement, text)
+
+    return text
+
