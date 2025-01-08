@@ -10,6 +10,7 @@ import re
 
 cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
 WORKING_DIR = os.path.join(cd_, 'data/ppt/')
+OUTPUT_DIR = os.path.join(cd_, 'data/ppt/ppts/' )
 
 # reading a content DB, and make a ppt file for a given v_id
 # defining procedure and format within the class for a given blank template
@@ -21,6 +22,7 @@ class PPT_MAKER:
     SLIDE_TYPE = ['title', 'image', 'bullet', 'close']
     BULLET_PATTERN = r'^\[\s*(.*?)\s*\]$'  #  [whatever text] at the start of a line [, and end of a line ]
     SUPPLEMENT_PATTERN = r'\<\s*(.*?)\s*\>'  #  <whatever text>
+    BULLET = '\u25A0'
 
     # CUSTOM SETTINGS
     PLACEHOLDER_IDX_DICT = {
@@ -64,6 +66,7 @@ class PPT_MAKER:
         if self.get_target_db(v_id, target_filename):
             self.localizer()
             print(f'Target_db creation successful for {self.target_pptx_name} with length {len(self.target_db)}.')
+        self.make_ppt()
 
     @staticmethod
     def get_file_path(filename):
@@ -137,7 +140,7 @@ class PPT_MAKER:
             self.set_note(slide, row)
 
         close_ppt_if_saved(self.target_pptx_name)
-        self.final_ppt_path_filename = PPT_MAKER.get_file_path(self.target_pptx_name)
+        self.final_ppt_path_filename = os.path.join(OUTPUT_DIR, self.target_pptx_name)
         self.prs.save(self.final_ppt_path_filename)
         print("PPT save completed ---- ")
 
@@ -167,21 +170,21 @@ class PPT_MAKER:
                     font_size_pt = PPT_MAKER.FONT_SIZE_DICT_E[row['type']][i]
 
                 # BULLET slide, DESC paragraph has formatting option with [ ]
-                # text_wrapper wraps words in case if Korean (in English case, it is automatically done by ppt)
                 if row['type'] == 'bullet' and i == 'desc':
                     for line in value.splitlines():
                         run = paragraph.add_run() 
                         match = re.match(PPT_MAKER.BULLET_PATTERN, line) # match only from the start of the line
                         if match:
-                            run.text=self.text_wrapper('\u25A0 '+match.group(1), font_size_pt, tph.width)+'\n'
+                            run.text=self.text_wrapper(PPT_MAKER.BULLET + ' ' +match.group(1), font_size_pt, tph.width)+'\n'
                             run.font.size = PPT_MAKER.pt_to_emu(font_size_pt)
                             run.font.bold = True
                             run.font.color.rgb = RGBColor(*PPT_MAKER.COLOR_DICT['dark_blue'])
                         else: 
-                            run.text=self.text_wrapper(line, font_size_pt, tph.width)+'\n'
+                            run.text=self.text_wrapper(line, font_size_pt-PPT_MAKER.EXT_FONT_REDUCTION, tph.width)+'\n'
                             run.font.size = PPT_MAKER.pt_to_emu(font_size_pt-PPT_MAKER.EXT_FONT_REDUCTION)
                             run.font.bold = False
                 else: 
+                    # handling supplement pattern < > and give it different style
                     search = re.search(PPT_MAKER.SUPPLEMENT_PATTERN, value)
                     value = re.sub(PPT_MAKER.SUPPLEMENT_PATTERN, "", value)
                     run = paragraph.add_run()  # Get the first run of the paragraph
@@ -222,42 +225,43 @@ class PPT_MAKER:
 
         return text
 
+    # text_wrapper wraps words in case if Korean 
+    # In English case, it is automatically done by ppt. However, below applied in English as well for consistency
     def text_wrapper(self, text, fontsize, width): # fontsize is in pt (height), width is in EMU
-        # process only in Korean case
-        if self.target_db['lang'].iloc[0] != 'K':
-            return text
+        if self.target_db['lang'].iloc[0] == 'K':
+            FONT_WIDTH_ADJUSTMENT = 0.80  # Apply []% to the height for width calculation
+            TEXTBOX_WIDTH_MARGIN = 0.80
+        else: 
+            # return text # if you don't want to apply text wrapper in English case
+            FONT_WIDTH_ADJUSTMENT = 0.78  # Apply []% to the height for width calculation
+            TEXTBOX_WIDTH_MARGIN = 0.72
         
         # Font size is Height of the font, not width
-        WIDTH_ADJUSTMENT = 0.84  # Apply % of the width for text
-        fontsize = WIDTH_ADJUSTMENT*fontsize # Adjust the font size to fit the width
+        fontsize = FONT_WIDTH_ADJUSTMENT*fontsize # Adjust the font size to fit the width
         width_in_pt = (width / 914400) * 72
-        max_line_width = width_in_pt * 0.93  # Apply 95% of the width for text
+        max_line_width = width_in_pt * TEXTBOX_WIDTH_MARGIN  # Apply []% of the width for text
 
         lines = []
     
         for pg in text.splitlines():  # pg stands for paragraph
-            # if pg matches BULLET_PATTERN leave it as a line 
-            if re.match(rf'({PPT_MAKER.BULLET_PATTERN})', pg):
-                current_line = pg
-            else: 
-                words = pg.split()
-                current_line = ""
-                current_length = 0  # Track the length of the current line in points
+            words = pg.split()
+            current_line = ""
+            current_length = 0  # Track the length of the current line in points
         
-                for word in words:
-                    # Calculate the word length in points
-                    word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize/2 for char in word) + fontsize/2  # Add space width
+            for word in words:
+                # Calculate the word length in points
+                word_length = sum(fontsize if '\uAC00' <= char <= '\uD7A3' else fontsize*1.5 if char ==  PPT_MAKER.BULLET else fontsize/2 for char in word) + fontsize/2.5  # Add space width
             
-                    # Check if adding the word exceeds the max width
-                    if current_length + word_length > max_line_width:
-                        # Append the current line and reset
-                        lines.append(current_line.strip())
-                        current_line = word
-                        current_length = word_length
-                    else:
-                        # Add the word to the current line
-                        current_line += " " + word
-                        current_length += word_length
+                # Check if adding the word exceeds the max width
+                if current_length + word_length > max_line_width:
+                    # Append the current line and reset
+                    lines.append(current_line.strip())
+                    current_line = word
+                    current_length = word_length
+                else:
+                    # Add the word to the current line
+                    current_line += " " + word
+                    current_length += word_length
         
             # Add the last line of the paragraph
             lines.append(current_line.strip())
@@ -360,7 +364,6 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 21 
+    v_id = 2 
     pm = PPT_MAKER(v_id)
-    pm.make_ppt()
     open_ppt_file(pm.final_ppt_path_filename)

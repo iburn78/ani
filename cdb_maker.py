@@ -36,17 +36,20 @@ class CDB_MAKER: #content database maker
     # define max words number in each element to pass to AI
     LENGTH_K_DICT = {
         'title': {'title': 7, 'note': 15},
-        'image': {'title': 3, 'subtitle': 5, 'desc': 15, 'note': 30},
-        'bullet': {'title': 7, 'subtitle': 5, 'b_title': 7, 'b_desc': 20, 'note': 30},
-        'close': {'title': 7, 'subtitle': 10, 'note': 15},
+        'image': {'subtitle': 7, 'desc': 15, 'note': 25},
+        'bullet': {'title': 7, 'subtitle': 7, 'b_title': 7, 'b_desc': 20, 'note': 30},
+        'close': {'title': 7, 'subtitle': 10, 'note': 20},
     }
     LENGTH_E_DICT = {
         'title': {'title': 5, 'note': 10},
-        'image': {'title': 3, 'subtitle': 4, 'desc': 10, 'note': 25},
-        'bullet': {'title': 5, 'subtitle': 4, 'b_title': 5, 'b_desc': 20, 'note': 25},
-        'close': {'title': 5, 'subtitle': 7, 'note': 10},
+        'image': {'subtitle': 5, 'desc': 10, 'note': 25},
+        'bullet': {'title': 5, 'subtitle': 5, 'b_title': 5, 'b_desc': 15, 'note': 25},
+        'close': {'title': 5, 'subtitle': 7, 'note': 15},
     }
     ########### 
+    # GPT_MODEL = "gpt-4o-mini"
+    # GPT_MODEL = "gpt-4o"
+    GPT_MODEL = "gpt-4o-2024-11-20"
     # Initially get AI response n times longer than intended length, then compress it using AI again to get live detail
     INITIAL_MULTPLE = 5 
     ########### 
@@ -54,7 +57,7 @@ class CDB_MAKER: #content database maker
     BIZ_COVERAGE = 2 # If multiple business segments, how many to focus
     ISSUES_COUNT = 3 # In order to change this other than 3, need to change issues slide command as well, as the response format is hard coded.
     DATA_FRESHNESS = 6 # months
-    IMAGE_DIR_PATH = '/images'
+    IMAGE_DIR_PATH = 'images/'
     SUFFIX = 'shorts_13sec'
 
     def __init__(self, code=None, lang=None, reference_info={}):
@@ -167,8 +170,7 @@ class CDB_MAKER: #content database maker
                     command = command.strip() + '\n' + str(style) 
 
         chat_completion = client.chat.completions.create(
-            # model="gpt-4o",
-            model="gpt-4o-mini",
+            model=CDB_MAKER.GPT_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -453,7 +455,7 @@ class CDB_MAKER: #content database maker
         if self.lang == 'K':
             title = f'{x[-1][:2]}/{x[-1][3]}분기 실적'
         else: 
-            title = f'{x[-1][:2]}/{x[-1][3]}Q performance'
+            title = f'{x[-1][:2]}/{x[-1][3]}Q results'
 
         # content generation part
         t_type = 'image' # template type
@@ -557,9 +559,9 @@ class CDB_MAKER: #content database maker
 
             CONTENT REQUIREMENTS:
             - Provide **exactly one line of text** for each numbered item.
+            - The company name **must be included** naturally in both line.
             - Primarily refer to Korean sources, using English sources only as supplementary.
             - Exclude terms like 'line n', 'business', 'strength', 'evidence', 'script', 'issue', or 'title' from the response.
-            - The company name must be included naturally in each line.
             - Avoid redundant explanations, quotation marks, or additional formatting to ensure the output can be directly copied and pasted as plain text.
 
             Script:
@@ -594,4 +596,4 @@ if __name__ == "__main__":
                 }
     code = '000660'
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
-    _ = CDB_MAKER(code, 'E', ref_info)
+    # _ = CDB_MAKER(code, 'E', ref_info)
