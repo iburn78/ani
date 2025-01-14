@@ -221,11 +221,11 @@ class VidProcess:
     # vp.process()
 
 if __name__ == "__main__": 
-    k_ppt_file = 'SK하이닉스_K_2025-01-08_shorts_13sec'
+    k_ppt_file = '노루홀딩스_K_2025-01-13_shorts_13sec'
 
     vp = VidProcess(k_ppt_file)
     vp.process_K_video()
-    vp.process_E_video()
+    # vp.process_E_video()
     #%% 
     # ppt_tts(vp.k_meta,1)
     # vp.upload_K_video()

@@ -367,6 +367,6 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 2
+    v_id = 4
     pm = PPT_MAKER(v_id)
     open_ppt_file(pm.final_ppt_path_filename)

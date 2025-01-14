@@ -60,7 +60,7 @@ class CDB_MAKER: #content database maker
     IMAGE_DIR_PATH = 'images/'
     SUFFIX = 'shorts_13sec'
 
-    def __init__(self, code=None, lang=None, reference_info={}):
+    def __init__(self, code=None, lang=None, reference_info=None):
         self.content_db_path = PPT_MAKER.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME)
         # read content_db, and if not exists, creates one with preset columns
         self.content_db = PPT_MAKER.read_content_db(self.content_db_path)
@@ -69,6 +69,7 @@ class CDB_MAKER: #content database maker
             config = json.load(json_file)
             self.api_key = config['openai']
         if code and lang:    
+            if reference_info == None: reference_info = {}
             self.setup(code, lang, reference_info)
 
     def setup(self, code, lang='K', reference_info={}):
@@ -599,6 +600,10 @@ if __name__ == "__main__":
     ref_info = {'strengths': ['The company has a key strength in HBM'], 
                 'general': ['HBM is a key issue in the momory industry'], 
                 }
-    code = '000660'
+    ref_info = None
+    # code = '000660'
+    code = '000320' # Noroo Holdings
+    # code = '090350' # Noroo Paint
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
-    _ = CDB_MAKER(code, 'E', ref_info)
+    # _ = CDB_MAKER(code, 'E', ref_info)
+    
