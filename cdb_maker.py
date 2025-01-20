@@ -51,7 +51,9 @@ class CDB_MAKER: #content database maker
     # GPT_MODEL = "gpt-4o"
     GPT_MODEL = "gpt-4o-2024-11-20"
     # Initially get AI response n times longer than intended length, then compress it using AI again to get live detail
-    INITIAL_MULTPLE = 5 
+    INITIAL_MULTPLE = 5  # Initial response length 
+    RETRIAL_THRESHOLD = 5 # # trial before changing mode of asking 
+    RETRIAL_MAX_NUM = 10  # for while statement to break
     ########### 
 
     BIZ_COVERAGE = 2 # If multiple business segments, how many to focus
@@ -234,7 +236,12 @@ class CDB_MAKER: #content database maker
                 ind += 1
                 print('--- Raw Response Length Error --- no tried:', ind)
                 print(raw_response)
-                if ind >= 10: 
+                if ind >= CDB_MAKER.RETRIAL_THRESHOLD:
+                    ###########################
+                    ###########################
+                    ###########################
+                    pass
+                if ind >= CDB_MAKER.RETRIAL_MAX_NUM: 
                     print('--- MAX TRIAL LIMT EXCEED --- SOMETHING WRONG ---')
                     break
 
