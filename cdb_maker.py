@@ -52,7 +52,7 @@ class CDB_MAKER: #content database maker
     GPT_MODEL = "gpt-4o-2024-11-20"
     # Initially get AI response n times longer than intended length, then compress it using AI again to get live detail
     INITIAL_MULTPLE = 5  # Initial response length 
-    RETRIAL_THRESHOLD = 5 # # trial before changing mode of asking 
+    RETRIAL_THRESHOLD = 3 # # trial before changing mode of asking 
     RETRIAL_MAX_NUM = 10  # for while statement to break
     ########### 
 
@@ -220,15 +220,26 @@ class CDB_MAKER: #content database maker
             command = command + '\n' + reference_info
         return command 
 
+    def _initial_command_adjustment(self, initial_command, **kwargs):
+        for key, value in kwargs.items():
+            initial_command = initial_command.replace(f'__{key.upper()}__', str(value))
+
+        return initial_command
+
     # t_type: template type, c_type: content type
     def _initial_command_process(self, initial_command, t_type, c_type, command_style_dict):
+        _freshness = CDB_MAKER.DATA_FRESHNESS
         initial_command = self._append_ref_info(initial_command, target_content_type=c_type)
+        adjustment_dict = {
+            'DATA_FRESHNESS': _freshness,
+        }
+        command_to_process = self._initial_command_adjustment(initial_command, **adjustment_dict)
         lend = self.lend[t_type]  # final response length dictionary
 
         # ensure getting right number of responses
         ind = 0
         while True:
-            raw_response = self._get_AI_response(initial_command)
+            raw_response = self._get_AI_response(command_to_process)
             raw_response = [r for r in raw_response.splitlines() if r.strip() != '']
             if len(raw_response) == len(command_style_dict): 
                 break
@@ -237,7 +248,11 @@ class CDB_MAKER: #content database maker
                 print('--- Raw Response Length Error --- no tried:', ind)
                 print(raw_response)
                 if ind >= CDB_MAKER.RETRIAL_THRESHOLD:
-                    ###########################
+                    _freshness = _freshness + 3
+                    adjustment_dict = {
+                        'DATA_FRESHNESS': _freshness,
+                    }
+                    command_to_process = self._initial_command_adjustment(initial_command, **adjustment_dict)
                     ###########################
                     ###########################
                     pass
@@ -388,7 +403,7 @@ class CDB_MAKER: #content database maker
         content_type = 'issues' 
         ilend = self.ilend[t_type]  # initial response length dictionary
         initial_command = textwrap.dedent(f'''\
-            Provide {CDB_MAKER.ISSUES_COUNT} recent pending issues within {CDB_MAKER.DATA_FRESHNESS} months that could significantly affect the future performance of {self.name}, formatted exactly as follows:
+            Provide {CDB_MAKER.ISSUES_COUNT} recent pending issues within __DATA_FRESHNESS__ months that could significantly affect the future performance of {self.name}, formatted exactly as follows:
 
             line 1: A detailed explanation of the most important issue in {ilend['b_desc']} words
             line 2: The title of the issue above in {ilend['b_title']} words
