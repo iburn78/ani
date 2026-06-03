@@ -1,6 +1,6 @@
 #%% 
 from ppt_maker import PPT_MAKER, WORKING_DIR
-from trader.tools.tools import get_name_from_code, get_market_and_rank, rank_counter
+from trader.tools.dc_tools import get_name_from_code, get_market_and_rank, rank_counter
 from ani.ani_tools import close_excel_if_saved, script_optimizer
 from trader.analysis.drawer import Drawer
 from openai import OpenAI

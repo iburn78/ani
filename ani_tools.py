@@ -1,10 +1,9 @@
 #%% 
 from openai import OpenAI
-from ppt2video.tools import * 
-from ppt2video.tools import _clean_text 
+from ppt2video.tools import Meta, ppt_to_text, _clean_text 
+from pptx import Presentation
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
-import googleapiclient.errors
 from googleapiclient.http import MediaFileUpload
 from datetime import datetime, date
 import json
@@ -14,26 +13,41 @@ import pandas as pd
 import re
 import subprocess
 import shutil
-import win32com.client
 
-GOOGLE_CLIENT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/google_client.json')
-YOUTUBE_CONF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/youtube_conf.json')
-GOOGLE_CLOUD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/google_cloud.json')
-CONF_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config/config.json')
+import platform
+if platform.system() == "Windows":
+    import win32com.client
+else:
+    win32com = None
+
 cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
-YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
+pd_ = os.path.dirname(cd_) # ..
 
+GOOGLE_CLIENT = os.path.join(pd_, 'config/google_client.json')
+YOUTUBE_CONF = os.path.join(pd_, 'config/youtube_conf.json')
+GOOGLE_CLOUD = os.path.join(pd_, 'config/google_cloud.json')
+YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
 
 # ----------------------------------------------------------------------------------------------------
 # ChatGPT API functions, mainly getting translated text
 # ----------------------------------------------------------------------------------------------------
 
-def _translate_text(input_text, conf_file, type='ssml'):
-    with open(conf_file, 'r') as json_file:
-        config = json.load(json_file)
-        api_key = config['openai']
+# using locally installed LLM engine 
+client = OpenAI(
+    base_url="http://localhost:11434/v1", # ollama
+    api_key="dummy"
+)
+LLM_model = 'gemma4'
 
-    client = OpenAI(api_key=api_key)
+# instead to use OpenAI API 
+# CONF_FILE = os.path.join(pd_, 'config/config.json')
+# with open(CONF_FILE, 'r') as json_file:
+#     config = json.load(json_file)
+#     api_key = config['openai']
+# client = OpenAI(api_key=api_key)
+# LLM_model="gpt-4o-mini",
+
+def _translate_text(input_text, type='ssml'):
     if type=='ssml': 
         content_command = "The following text is in SSML format. Please translate the content to English while preserving the SSML tags:\n\n"
     elif type=='title': 
@@ -45,8 +59,8 @@ def _translate_text(input_text, conf_file, type='ssml'):
     else:
         content_command = "ERROR"
 
-    chat_completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+    response = client.chat.completions.create(
+        model=LLM_model,
         messages=[
             {
                 "role": "user",
@@ -56,15 +70,9 @@ def _translate_text(input_text, conf_file, type='ssml'):
             }
         ]
     )
-    return chat_completion.choices[0].message.content
+    return response.choices[0].message.content
 
-
-def _get_desc(input_text, lang, conf_file):
-    with open(conf_file, 'r') as json_file:
-        config = json.load(json_file)
-        api_key = config['openai']
-
-    client = OpenAI(api_key=api_key)
+def _get_desc(input_text, lang):
     language = 'Korean' if lang == 'K' else 'English' if lang == 'E' else Exception("Invalid language")
     content_command = f'''
 YouTube video script. Respond exactly in this format:
@@ -76,8 +84,8 @@ line 3: {language} description up to 60 words
 Titles need to be less than or at most 55 characters. Use new lines without format keywords or quotes. For hash tags, remove spaces, capitalize the first letter of each word.
 
 '''
-    chat_completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+    response = client.chat.completions.create(
+        model=LLM_model,
         messages=[
             {
                 "role": "user",
@@ -87,45 +95,45 @@ Titles need to be less than or at most 55 characters. Use new lines without form
             }
         ]
     )
-    return chat_completion.choices[0].message.content
+    return response.choices[0].message.content
 
 
 # Translate to English, and get English script notes for slides in SSML format
-def gen_Eng_notes_from_Korean(meta: Meta, conf_file):
-    num = ppt_to_text(meta)
+def gen_Eng_notes_from_Korean(meta: Meta):
+    number_of_text_files = ppt_to_text(meta)
 
-    for n in range(num):
+    for n in range(number_of_text_files):
         txt_file = f"{os.path.join(meta.voice_path, meta.ppt_file.replace(meta.ppt_extension, '_' + str(n) + '.txt'))}"
 
         with open(txt_file, 'r', encoding='utf-8') as file:
             ssml_content = file.read()
 
-        translated_text = _translate_text(ssml_content, conf_file, 'ssml')
+        translated_text = _translate_text(ssml_content, 'ssml')
 
         with open(txt_file, 'w', encoding='utf-8') as file:
             file.write(translated_text)
 
         print(f"Translated text for file {n}: {translated_text}")
 
-    return num
+    return number_of_text_files
 
 
 # Translate to English, and get English ttitle and desc
-def translate_title_desc(title, desc, conf_file): 
-    translated_title = _translate_text(title, conf_file, 'title')
-    translated_desc = _translate_text(desc, conf_file, 'desc')
+def translate_title_desc(title, desc): 
+    translated_title = _translate_text(title, 'title')
+    translated_desc = _translate_text(desc, 'desc')
     return translated_title, translated_desc
 
 
 # Translate to English, and get English script notes
-def translate_script(script, conf_file):
-    return _translate_text(script, conf_file, 'script')
+def translate_script(script):
+    return _translate_text(script, 'script')
 
 
 # get Korean and English title, desc, tags
 # lang = 'K' or 'E'
-def get_desc(input_text, lang, conf_file): 
-    res = _get_desc(input_text, lang, conf_file)
+def get_desc(input_text, lang):
+    res = _get_desc(input_text, lang)
     res = "\n".join(line.strip() for line in res.splitlines() if line.strip()).splitlines()
 
     if len(res) != 3:
@@ -506,11 +514,14 @@ def set_notes(ppt_path, text):
     ppt.save(ppt_path)
 
 
+# used to upload ppt to issuetracker 
 def ppt_to_images(ppt_path, slide_image_root):
     slide_folder = os.path.abspath(os.path.join(slide_image_root, os.path.basename(ppt_path).replace('.pptx', '')))
     os.makedirs(slide_folder, exist_ok=True)
 
     # Initialize PowerPoint
+    if win32com is None: 
+        raise Exception("Current logic that converts PPT to image works only in Windows: check platform")
     ppt_app = win32com.client.Dispatch("PowerPoint.Application")
     presentation = ppt_app.Presentations.Open(ppt_path, WithWindow=False)
 
@@ -542,12 +553,12 @@ def gen_E_file(work_path, k_filename):
 
 # If already not exists, creates a English copy of a Korean ppt file, and set notes with translated scripts
 # file name should have path info as well.
-def set_translated_notes(K_file, conf_file):
+def set_translated_notes(K_file):
     E_file = K_file.replace('_K_', '_E_')
     if not os.path.exists(E_file):
         shutil.copy(K_file, E_file)
     notes = get_notes(K_file)
-    E_notes = translate_script(notes, conf_file)
+    E_notes = translate_script(notes)
     set_notes(E_file, E_notes)
     print(f'English copy of {os.path.basename(K_file)} completed with English notes')
     return None
@@ -555,11 +566,11 @@ def set_translated_notes(K_file, conf_file):
 
 # Applying set_translated_notes to a list
 # file list should have path info as well.
-def trans_list_of_K_files(K_list, E_list, conf_file):
+def trans_list_of_K_files(K_list, E_list):
     E_list_check = E_list.copy()
     for kf in K_list: 
         if kf.replace('_K_', '_E_') in E_list:
-            set_translated_notes(kf, conf_file)
+            set_translated_notes(kf)
             E_list_check.remove(kf.replace('_K_', '_E_'))
         else: 
             raise Exception('Check creation of Engfile')
@@ -568,6 +579,7 @@ def trans_list_of_K_files(K_list, E_list, conf_file):
 
 
 def close_excel_if_saved(excel_filename):
+    if win32com is None: return
     # Connect to the Excel application
     excel = win32com.client.Dispatch("Excel.Application")
     for workbook in excel.Workbooks:
@@ -583,6 +595,7 @@ def close_excel_if_saved(excel_filename):
 
 
 def close_ppt_if_saved(ppt_filename):
+    if win32com is None: return
     # Connect to PowerPoint application
     powerpoint = win32com.client.Dispatch("PowerPoint.Application")
     for presentation in powerpoint.Presentations:

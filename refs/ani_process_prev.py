@@ -1,6 +1,8 @@
 #%% ================================================================================
 #   ================================================================================
 from ani_tools import *
+from ppt2video.tools import save_ppt_as_images, ppt_tts, composite_video_from_ppt_and_voice
+import re
 
 # ------------------------------------------------
 # 0: wide videos
@@ -21,7 +23,7 @@ video_param = {}
 type_of_video = check_filename(k_ppt_file)
 prep_K_file = os.path.join('data/ppt', k_ppt_file.replace('.pptx','')+'.pptx')
 notes = get_notes(prep_K_file)
-[title, tags, desc] = get_desc(notes, 'K', CONF_FILE)
+[title, tags, desc] = get_desc(notes, 'K')
 k_title = title
 k_desc = tags+ '\n' +desc
 k_keywords = list(tags.replace('#','').strip().split(' '))
@@ -120,7 +122,7 @@ e_meta = Meta(
     **video_param,
     )
 save_ppt_as_images(e_meta)
-num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
+num = gen_Eng_notes_from_Korean(e_meta)
 
 # ------------------------------------------------
 # if needed modify the script here.
@@ -131,7 +133,7 @@ num = gen_Eng_notes_from_Korean(e_meta, CONF_FILE)
 timepoints, total_duration = ppt_tts(e_meta, num)
 composite_video_from_ppt_and_voice(e_meta, timepoints)
 
-e_title, e_desc = translate_title_desc(k_title, k_desc, CONF_FILE)
+e_title, e_desc = translate_title_desc(k_title, k_desc)
 e_keywords = re.findall(r"#(\w+)", e_desc)
 print(e_title)
 print(e_desc)

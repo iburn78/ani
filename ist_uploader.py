@@ -5,7 +5,7 @@ import os
 import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from ani_tools import *
+from ani_tools import ____
 
 pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
 BASE_DIR = os.path.join(pd_, 'analysis')
@@ -138,7 +138,7 @@ class IST:  # IssueTracker Handler
         )
 
         total_files = (total_slides // MAX_IMAGES_PER_POST) + (1 if total_slides % MAX_IMAGES_PER_POST > 0 else 0)
-        # [title, tags, desc] = get_desc(notes, lang, conf_file)
+        # [title, tags, desc] = get_desc(notes, lang)
         title = vtitle
         tags = vtags.replace(',', '')
 
@@ -224,9 +224,9 @@ class IST:  # IssueTracker Handler
         # display(cat_E_shorts)
         # display(cat_E_13secs)
 
-        trans_list_of_K_files(cat_K_longs, cat_E_longs, conf_file)
-        trans_list_of_K_files(cat_K_shorts, cat_E_shorts, conf_file)
-        trans_list_of_K_files(cat_K_13secs, cat_E_13secs, conf_file)
+        trans_list_of_K_files(cat_K_longs, cat_E_longs)
+        trans_list_of_K_files(cat_K_shorts, cat_E_shorts)
+        trans_list_of_K_files(cat_K_13secs, cat_E_13secs)
 
         for f in cat_K_longs:
             self.upload_a_ppt_ist(f, 'LF')
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
 
     PPT_WORK_DIR = os.path.join(cd_, 'data/ppt')
-    CONF_FILE = os.path.join(pd_, 'config/config.json')
+    CONF_FILE = os.path.join(pd_, 'config/____.json') # which contains issuetracker id and password
 
     ist = IST(CONF_FILE)
     ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)

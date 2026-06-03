@@ -14,7 +14,7 @@ class VidProcess:
     # 1: vertical shorts
     # 2: 13 sec series
     # ------------------------------------------------
-    def __init__(self, k_ppt_file, no_fade=[], video_param={}, speaking_rate_param = {}, conf_file = CONF_FILE, gca = GOOGLE_CLOUD, google_client = GOOGLE_CLIENT, youtube_conf = YOUTUBE_CONF):
+    def __init__(self, k_ppt_file, no_fade=[], video_param={}, speaking_rate_param = {}, gca = GOOGLE_CLOUD, google_client = GOOGLE_CLIENT, youtube_conf = YOUTUBE_CONF):
         self.type_of_video = check_filename(k_ppt_file)
         self.k_ppt_file = k_ppt_file.replace('.pptx', '')+'.pptx'
         self.e_ppt_file = self.k_ppt_file.replace('_K_', '_E_')
@@ -47,7 +47,6 @@ class VidProcess:
             )
 
         self.max_length = VidProcess.MAX_SHORTS_TIME if self.type_of_video == 1 else VidProcess.MAX_13SEC_TIME if self.type_of_video == 2 else VidProcess.UNLIMITED 
-        self.conf_file = conf_file
         self.google_client = google_client
         self.thumbnail_file_k = None
         self.thumbnail_file_e = None
@@ -88,7 +87,7 @@ class VidProcess:
 
     def gen_E_video(self, translate = True):
         if translate:
-            num = gen_Eng_notes_from_Korean(self.e_meta, CONF_FILE)  # if notes are not translated in the E-PPT-file, this translates notes only therein.
+            num = gen_Eng_notes_from_Korean(self.e_meta)  # if notes are not translated in the E-PPT-file, this translates notes only therein.
         else:
             num = ppt_to_text(self.e_meta)
         timepoints, total_duration = ppt_tts(self.e_meta, num)
@@ -101,7 +100,7 @@ class VidProcess:
 
     def gen_K_prep(self):
         notes = get_notes(os.path.join(self.k_meta.ppt_path, self.k_ppt_file))
-        [title, tags, desc] = get_desc(notes, 'K', self.conf_file)
+        [title, tags, desc] = get_desc(notes, 'K')
         self.k_title_tail = title
         self.k_title = self.k_title_header + title
         self.k_desc = tags+ '\n' +desc
@@ -113,12 +112,12 @@ class VidProcess:
 
     def gen_E_prep(self):
         if self.k_title_tail != None and len(self.k_title) > 0:
-            self.e_title_tail, self.e_desc = translate_title_desc(self.k_title_tail, self.k_desc, self.conf_file)
+            self.e_title_tail, self.e_desc = translate_title_desc(self.k_title_tail, self.k_desc)
             self.e_title = self.e_title_header + self.e_title_tail
             self.e_keywords = re.findall(r"#(\w+)", self.e_desc)
         else: 
             notes = get_notes(os.path.join(self.e_meta.ppt_path, self.e_ppt_file))
-            [title, tags, desc] = get_desc(notes, 'E', self.conf_file)
+            [title, tags, desc] = get_desc(notes, 'E')
             self.e_title = self.e_title_header + title
             self.e_desc = tags+ '\n' +desc
             self.e_keywords = list(tags.replace('#','').strip().split(' '))
