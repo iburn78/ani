@@ -28,10 +28,11 @@ YOUTUBE_CONF = os.path.join(pd_, 'config/youtube_conf.json')
 GOOGLE_CLOUD = os.path.join(pd_, 'config/google_cloud.json')
 YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
 
+df_krx = pd.read_feather(os.path.join(pd_, 'trader/data_collection/data/df_krx.feather'))
+
 # ----------------------------------------------------------------------------------------------------
 # ChatGPT API functions, mainly getting translated text
 # ----------------------------------------------------------------------------------------------------
-
 # using locally installed LLM engine 
 client = OpenAI(
     base_url="http://localhost:11434/v1", # ollama
@@ -620,7 +621,6 @@ SCRIPT_DICT = {
     'dram': 'D-ram', 
 }
 
-
 def script_optimizer(text):
     # Regular expression to find English words with more than 3 capital letters, even if they are not standalone
     def _convert_word(match):
@@ -644,4 +644,3 @@ def script_optimizer(text):
     text = pattern.sub(_replacement, text)
 
     return text
-

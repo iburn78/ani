@@ -1,16 +1,11 @@
 #%% 
 from ppt_maker import PPT_MAKER, WORKING_DIR
-from trader.tools.dc_tools import get_name_from_code, get_market_and_rank, rank_counter
-from ani.ani_tools import close_excel_if_saved, script_optimizer
+from ani.ani_tools import close_excel_if_saved, script_optimizer, df_krx, client, LLM_model
 from trader.analysis.drawer import Drawer
-from openai import OpenAI
 import pandas as pd
-import os, json
+import os
 import textwrap
 import re
-
-pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONF_FILE = os.path.join(pd_, 'config/config.json')
 
 class CDB_MAKER: #content database maker
     ###### Structure of pages #######
@@ -47,9 +42,6 @@ class CDB_MAKER: #content database maker
         'close': {'title': 5, 'subtitle': 7, 'note': 15},
     }
     ########### 
-    # GPT_MODEL = "gpt-4o-mini"
-    # GPT_MODEL = "gpt-4o"
-    GPT_MODEL = "gpt-4o-2024-11-20"
     # Initially get AI response n times longer than intended length, then compress it using AI again to get live detail
     INITIAL_MULTPLE = 5  # Initial response length 
     RETRIAL_THRESHOLD = 3 # # trial before changing mode of asking 
@@ -67,9 +59,8 @@ class CDB_MAKER: #content database maker
         # read content_db, and if not exists, creates one with preset columns
         self.content_db = PPT_MAKER.read_content_db(self.content_db_path)
         self.slide_type = PPT_MAKER.SLIDE_TYPE # ['title', 'image', 'bullet', 'close']
-        with open(CONF_FILE, 'r') as json_file:
-            config = json.load(json_file)
-            self.api_key = config['openai']
+        self.LLM_model = LLM_model
+        self.client = client
         if code and lang:    
             if reference_info == None: reference_info = {}
             self.setup(code, lang, reference_info)
@@ -79,7 +70,7 @@ class CDB_MAKER: #content database maker
         # ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
         self.code = code
         self.v_id = 1 if self.content_db.empty else int(self.content_db['v_id'].iloc[-1]) + 1 
-        self.name = get_name_from_code(code)
+        self.name = df_krx.loc[code, 'Name']
         self.lang = lang
         self.lang_ = 'Korean' if lang == 'K' else 'English'
         self.eng_name = self.get_eng_name()
@@ -145,7 +136,6 @@ class CDB_MAKER: #content database maker
             self.content_db.to_excel(writer, sheet_name=PPT_MAKER.CONTENT_DB_SHEETNAME, index=False)
 
     def _get_AI_response(self, command, style = None):
-        client = OpenAI(api_key=self.api_key)
 
         if self.lang == 'K':
             if style == 'noun_phrase':  # title, subtitle
@@ -172,8 +162,8 @@ class CDB_MAKER: #content database maker
                 if style != None: # custom style
                     command = command.strip() + '\n' + str(style) 
 
-        chat_completion = client.chat.completions.create(
-            model=CDB_MAKER.GPT_MODEL,
+        chat_completion = self.client.chat.completions.create(
+            model=self.LLM_model,
             messages=[
                 {
                     "role": "user",
@@ -345,7 +335,9 @@ class CDB_MAKER: #content database maker
         content_type = 'strengths' 
         ilend = self.ilend[t_type]  # initial response length dictionary
 
-        market, rank = get_market_and_rank(self.code)
+        market = df_krx.loc[code, 'Market']
+        tdf_ = df_krx.loc[df_krx['Market'] == market].reset_index()
+        rank = tdf_.sort_values(by='Marcap', ascending=False).loc[tdf_['Code'] == code].index[0]+1
 
         # get first initial responses then refine them 
         initial_command = textwrap.dedent(f'''\ 
@@ -383,7 +375,7 @@ class CDB_MAKER: #content database maker
             8: ('subtitle', 'noun_phrase'),
         }
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
-        subtitle = response[7] + f' <{market} {rank_counter(rank, lang=self.lang)}>'  # < >: interpreted by PPT MAKER
+        subtitle = response[7] + f' <{market} {rank}-th>'  # < >: interpreted by PPT MAKER
         bullet_desc = self._build_bullet_desc(response, target_content_type=content_type)
         note = script_optimizer(response[6])
         self.notes.append(note)
