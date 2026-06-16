@@ -1,5 +1,6 @@
 #%%
 from ani_tools import *
+from ppt2video.tools import save_ppt_as_images, ppt_tts, composite_video_from_ppt_and_voice
 
 PPT_PATH = 'data/ppt/ppts/'
 VOICE_PATH = 'data/voice/'
@@ -220,11 +221,12 @@ class VidProcess:
     # vp.process()
 
 if __name__ == "__main__": 
-    k_ppt_file = '노루홀딩스_K_2025-01-13_shorts_13sec'
+    k_ppt_file = 'SK하이닉스_K_2026-06-16_shorts_13sec'
 
     vp = VidProcess(k_ppt_file)
     vp.process_K_video()
     # vp.process_E_video()
+
     #%% 
     # ppt_tts(vp.k_meta,1)
     # vp.upload_K_video()

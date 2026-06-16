@@ -1,7 +1,7 @@
 #%% 
 from ppt_maker import PPT_MAKER, WORKING_DIR
-from ani.ani_tools import close_excel_if_saved, script_optimizer, df_krx, client, LLM_model
-from trader.analysis.drawer import Drawer
+from ani.ani_tools import close_excel_if_saved, script_optimizer_for_voice_reader, df_krx, client, LLM_model
+from trader.graph.drawer import Drawer
 import pandas as pd
 import os
 import textwrap
@@ -69,7 +69,7 @@ class CDB_MAKER: #content database maker
         # setup
         # ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
         self.code = code
-        self.v_id = 1 if self.content_db.empty else int(self.content_db['v_id'].iloc[-1]) + 1 
+        self.v_id = 1 if self.content_db.empty else int(self.content_db['v_id'].iloc[-1]) + 1 # auto add, does not check duplicacy
         self.name = df_krx.loc[code, 'Name']
         self.lang = lang
         self.lang_ = 'Korean' if lang == 'K' else 'English'
@@ -193,7 +193,7 @@ class CDB_MAKER: #content database maker
         return reference_info
 
     def _append_ref_info(self, command, target_content_type=None):
-        # 'general' is included anyway
+        # 'general' is included always
         if target_content_type not in CDB_MAKER.ALLOWED_REF_INFO_KEYS: raise Exception('key error')
         ref = self.reference_info.get('general', [])
         if target_content_type != 'general':
@@ -203,7 +203,7 @@ class CDB_MAKER: #content database maker
             r_ = ''
             for r in ref:
                 r_ += '- '+r+'\n'
-            reference_info = textwrap.dedent(f'''\  
+            reference_info = textwrap.dedent(f'''\
             REFERENCE INFORMATION:
             {r_}
             ''')
@@ -253,7 +253,7 @@ class CDB_MAKER: #content database maker
         # reduce to desired length
         response = []
         for i in range(len(command_style_dict)):
-            command = textwrap.dedent(f'''\ 
+            command = textwrap.dedent(f'''\
                 Summarize in {lend[command_style_dict[i+1][0]]} words at most. Use facts and details therein, and avoid abstract expressions and hype words.
 
                 ''')+raw_response[i]+'\n'
@@ -340,7 +340,7 @@ class CDB_MAKER: #content database maker
         rank = tdf_.sort_values(by='Marcap', ascending=False).loc[tdf_['Code'] == code].index[0]+1
 
         # get first initial responses then refine them 
-        initial_command = textwrap.dedent(f'''\ 
+        initial_command = textwrap.dedent(f'''\
             Provide the following about {self.name}, formatted as follows:
 
             line 1: The company's business in {ilend['b_title']} words
@@ -377,7 +377,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[7] + f' <{market} {rank}-th>'  # < >: interpreted by PPT MAKER
         bullet_desc = self._build_bullet_desc(response, target_content_type=content_type)
-        note = script_optimizer(response[6])
+        note = script_optimizer_for_voice_reader(response[6])
         self.notes.append(note)
 
         res_dict = {
@@ -430,7 +430,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[7]
         bullet_desc = self._build_bullet_desc(response, target_content_type=content_type, seq=-1)
-        note = script_optimizer(response[6])
+        note = script_optimizer_for_voice_reader(response[6])
         self.notes.append(note)
 
         res_dict = {
@@ -482,10 +482,10 @@ class CDB_MAKER: #content database maker
         ilend = self.ilend[t_type]
         account_name = {'revenue': 'revenue', 
                         'operating_income': 'operting profit',}
-        initial_command = textwrap.dedent(f'''\ 
+        initial_command = textwrap.dedent(f'''\
             The following is {account_name[target_account]} data of {self.name}.
             Quarters: {x}
-            Data: {y} in 9^{unit_base} KRW
+            Data: {y} in 10^{unit_base} KRW
 
             Provide analysis of the quarterly data, formatted exactly as follows:
 
@@ -508,7 +508,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         subtitle = response[0]
         desc = response[1]
-        note = script_optimizer(response[2])
+        note = script_optimizer_for_voice_reader(response[2])
         self.notes.append(note)
 
         res_dict = {
@@ -528,7 +528,7 @@ class CDB_MAKER: #content database maker
         content_type = 'close'
         ilend = self.ilend[t_type]
         notes_so_far = '\n\n'.join(self.notes)
-        initial_command = textwrap.dedent(f'''\ 
+        initial_command = textwrap.dedent(f'''\
             Below is a script for a video about {self.name}. Provide responses exactly as instructed based on the script content:
 
             line 1: A final assessment of the outlook of the company for the next quarter in {ilend['title']} words.
@@ -552,7 +552,7 @@ class CDB_MAKER: #content database maker
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         title = response[0]
         subtitle = response[1]
-        note = script_optimizer(response[2]) 
+        note = script_optimizer_for_voice_reader(response[2]) 
         note += '\n' + ('감사합니다. ' if self.lang == 'K' else 'Thank you. ')
         self.notes.append(note)
 
@@ -571,7 +571,7 @@ class CDB_MAKER: #content database maker
         content_type = 'title'
         ilend = self.ilend[t_type]
         notes_so_far = '\n\n'.join(self.notes)
-        initial_command = textwrap.dedent(f'''\ 
+        initial_command = textwrap.dedent(f'''\
             This is a script for a video about {self.name}. Provide responses exactly as instructed based on the script content:
 
             line 1: A title for the front page of the video that would catch people's interest in {ilend['title']} words.
@@ -592,7 +592,7 @@ class CDB_MAKER: #content database maker
         }
         response = self._initial_command_process(initial_command, t_type, content_type, command_style_dict)
         title = response[0]
-        note = script_optimizer(response[1])
+        note = script_optimizer_for_voice_reader(response[1])
 
         res_dict = {
             'slide': slide_no,
@@ -604,20 +604,18 @@ class CDB_MAKER: #content database maker
         }
         return pd.DataFrame([res_dict])
 
-
 def _debugger(df): 
     for col in df.columns: 
         print(f'{col}---------')
         print(df[col].iloc[0])
 
 if __name__ == "__main__":
-    ref_info = {'strengths': ['The company has a key strength in HBM'], 
-                'general': ['HBM is a key issue in the momory industry'], 
+    ref_info = {'strengths': ['Focus should be in comparison with competitors (incumbents and new)'], 
+                'issues': ['may need to assess the effect of the potential ADR listing in Nasdaq to its stock performance'], 
+                'general': [],
                 }
-    ref_info = None
-    # code = '000660'
-    code = '000320' # Noroo Holdings
-    # code = '090350' # Noroo Paint
+    # ref_info = None
+    code = '000660'
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
     # _ = CDB_MAKER(code, 'E', ref_info)
     

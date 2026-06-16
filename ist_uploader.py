@@ -5,13 +5,15 @@ import os
 import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from ani_tools import ____
+from ani_tools import sort_files_by_date, filter_long_files, filter_short_files, find_pptx_files, trans_list_of_K_files, filter_13sec_short_files
+from ani_tools import get_notes, ppt_to_images, YOUTUBE_LOG
 
 pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
 BASE_DIR = os.path.join(pd_, 'analysis')
 # Better to clean the slide image root directory before running...
 SLIDE_IMAGE_ROOT = os.path.join(pd_, 'analysis/temp')
 MAX_IMAGES_PER_POST = 10
+IST_SITE = 'http://10.245.110.101/'
 
 QP_SHORTS_Korean = 45  # Quarterly Performances -Shorts (한글본, Korean)
 QP_SHORTS_English = 50  # Quarterly Performances -Shorts (English)
@@ -31,7 +33,7 @@ Card_dict = {'E':{
 }}
 
 class IST:  # IssueTracker Handler
-    IST_SITE = 'https://issuetracker.info/'
+    IST_SITE = IST_SITE
 
     def __init__(self, conf_file):
         self.session = requests.Session()
@@ -249,7 +251,7 @@ if __name__ == '__main__':
     pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
 
     PPT_WORK_DIR = os.path.join(cd_, 'data/ppt')
-    CONF_FILE = os.path.join(pd_, 'config/____.json') # which contains issuetracker id and password
+    CONF_FILE = os.path.join(pd_, 'config/ist.json') # which contains issuetracker id and password
 
     ist = IST(CONF_FILE)
     ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)

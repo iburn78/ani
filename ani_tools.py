@@ -28,25 +28,25 @@ YOUTUBE_CONF = os.path.join(pd_, 'config/youtube_conf.json')
 GOOGLE_CLOUD = os.path.join(pd_, 'config/google_cloud.json')
 YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
 
-df_krx = pd.read_feather(os.path.join(pd_, 'trader/data_collection/data/df_krx.feather'))
+df_krx = pd.read_feather(os.path.join(pd_, 'trader/data_collect/data/df_krx.feather'))
 
 # ----------------------------------------------------------------------------------------------------
 # ChatGPT API functions, mainly getting translated text
 # ----------------------------------------------------------------------------------------------------
 # using locally installed LLM engine 
-client = OpenAI(
-    base_url="http://localhost:11434/v1", # ollama
-    api_key="dummy"
-)
-LLM_model = 'gemma4'
+# client = OpenAI(
+#     base_url="http://localhost:11434/v1", # ollama
+#     api_key="dummy"
+# )
+# LLM_model = 'gemma4'
 
 # instead to use OpenAI API 
-# CONF_FILE = os.path.join(pd_, 'config/config.json')
-# with open(CONF_FILE, 'r') as json_file:
-#     config = json.load(json_file)
-#     api_key = config['openai']
-# client = OpenAI(api_key=api_key)
-# LLM_model="gpt-4o-mini",
+CONF_FILE = os.path.join(pd_, 'config/openai_api.json')
+with open(CONF_FILE, 'r') as json_file:
+    config = json.load(json_file)
+    api_key = config['openai_api_key']
+client = OpenAI(api_key=api_key)
+LLM_model = 'gpt-5.4-mini'
 
 def _translate_text(input_text, type='ssml'):
     if type=='ssml': 
@@ -330,7 +330,7 @@ def exist_in_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
     if os.path.exists(log_file):
         df = pd.read_excel(log_file)
     else:
-        raise Exception('Youtube Log not exists')
+        return False
     return os.path.basename(ppt_file) in df['filename'].values  # True or False
 
 
@@ -482,11 +482,13 @@ def check_filename(filename):
 
 # Easily open powerpoint software from python
 def open_ppt_file(ppt_path):
-    try:
-        subprocess.run(['start', 'powerpnt', ppt_path], check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred while opening the file: {e}")
-
+    if platform.system() == "Windows":
+        try:
+            subprocess.run(['start', 'powerpnt', ppt_path], check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while opening the file: {e}")
+    else:
+        return
 
 def get_notes(ppt_path):
     ppt = Presentation(ppt_path)
@@ -498,7 +500,6 @@ def get_notes(ppt_path):
             slide_content += f'<br>(p{slide_number+1}) '+ notes + '\n'
     
     return slide_content
-
 
 def set_notes(ppt_path, text):
     notes = text.splitlines()
@@ -513,7 +514,6 @@ def set_notes(ppt_path, text):
             slide.notes_slide.notes_text_frame.text = re.sub(pattern, "", notes[slide_number])
 
     ppt.save(ppt_path)
-
 
 # used to upload ppt to issuetracker 
 def ppt_to_images(ppt_path, slide_image_root):
@@ -538,7 +538,6 @@ def ppt_to_images(ppt_path, slide_image_root):
     presentation.Close()
     ppt_app.Quit()
     return slide_folder, total_slides
-
 
 # Make a copy of E_file from K_file
 def gen_E_file(work_path, k_filename):
@@ -579,6 +578,7 @@ def trans_list_of_K_files(K_list, E_list):
         raise Exception('Check creation of Engfile')
 
 
+# for operation convenience in Windows, auto close of excel application before saving
 def close_excel_if_saved(excel_filename):
     if win32com is None: return
     # Connect to the Excel application
@@ -595,6 +595,7 @@ def close_excel_if_saved(excel_filename):
     # print(f"{excel_filename} is not open.")
 
 
+# for operation convenience in Windows, auto close of ppt application before saving
 def close_ppt_if_saved(ppt_filename):
     if win32com is None: return
     # Connect to PowerPoint application
@@ -621,7 +622,7 @@ SCRIPT_DICT = {
     'dram': 'D-ram', 
 }
 
-def script_optimizer(text):
+def script_optimizer_for_voice_reader(text):
     # Regular expression to find English words with more than 3 capital letters, even if they are not standalone
     def _convert_word(match):
         word = match.group()
