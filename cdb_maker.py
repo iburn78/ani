@@ -1,5 +1,5 @@
 #%% 
-from ppt_maker import PPT_MAKER, WORKING_DIR
+from ani.PPT_Maker import PPT_MAKER, WORKING_DIR
 from ani.ani_tools import close_excel_if_saved, script_optimizer_for_voice_reader, df_krx, client, LLM_model
 from trader.graph.drawer import Drawer
 import pandas as pd
@@ -612,10 +612,10 @@ def _debugger(df):
 if __name__ == "__main__":
     ref_info = {'strengths': ['Focus should be in comparison with competitors (incumbents and new)'], 
                 'issues': ['may need to assess the effect of the potential ADR listing in Nasdaq to its stock performance'], 
-                'general': [],
+                'general': ['aviod using technical product names too much, rethink if people will understand easily'],
                 }
     # ref_info = None
     code = '000660'
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
-    # _ = CDB_MAKER(code, 'E', ref_info)
+    _ = CDB_MAKER(code, 'E', ref_info)
     

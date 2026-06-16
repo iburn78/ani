@@ -166,6 +166,7 @@ class VidProcess:
 
     def process_E_video(self, e_info=None):
         # 13 sec videos are already translated...
+        # others maybe not
         if self.type_of_video == 2:
             translate = False
         else: 
@@ -225,9 +226,7 @@ if __name__ == "__main__":
 
     vp = VidProcess(k_ppt_file)
     vp.process_K_video()
-    # vp.process_E_video()
+    vp.process_E_video()
 
-    #%% 
-    # ppt_tts(vp.k_meta,1)
-    # vp.upload_K_video()
-    # vp.upload_E_video()
+    vp.upload_K_video()
+    vp.upload_E_video()

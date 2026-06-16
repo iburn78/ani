@@ -4,6 +4,7 @@ import json
 import os
 import re
 from bs4 import BeautifulSoup
+import pandas as pd 
 from urllib.parse import urljoin
 from ani_tools import sort_files_by_date, filter_long_files, filter_short_files, find_pptx_files, trans_list_of_K_files, filter_13sec_short_files
 from ani_tools import get_notes, ppt_to_images, YOUTUBE_LOG
@@ -219,12 +220,12 @@ class IST:  # IssueTracker Handler
         cat_K_13secs = sort_files_by_date(filter_13sec_short_files(cat_K_files), dates_on_after)
         cat_E_13secs = sort_files_by_date(filter_13sec_short_files(cat_E_files), dates_on_after)
 
-        # display(cat_K_longs)
-        # display(cat_K_shorts)
-        # display(cat_K_13secs)
-        # display(cat_E_longs)
-        # display(cat_E_shorts)
-        # display(cat_E_13secs)
+        print(cat_K_longs)
+        print(cat_K_shorts)
+        print(cat_K_13secs)
+        print(cat_E_longs)
+        print(cat_E_shorts)
+        print(cat_E_13secs)
 
         trans_list_of_K_files(cat_K_longs, cat_E_longs)
         trans_list_of_K_files(cat_K_shorts, cat_E_shorts)
@@ -245,7 +246,7 @@ class IST:  # IssueTracker Handler
 
 
 if __name__ == '__main__': 
-    DATES_ON_AFTER = '2024-01-01' # None for today
+    DATES_ON_AFTER = '2026-01-01' # None for today
 
     cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
     pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 

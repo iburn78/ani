@@ -367,5 +367,6 @@ class PPT_MAKER:
             raise Exception('Not an image shape')
 
 if __name__ == '__main__': 
-    v_id = 1
-    pm = PPT_MAKER(v_id)
+    v_ids = [1, 2]
+    for i in v_ids: 
+        pm = PPT_MAKER(i)

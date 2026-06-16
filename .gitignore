@@ -181,3 +181,6 @@ voice/
 image/
 data/
 plots/
+
+# mac
+.DS_Store
