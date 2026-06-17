@@ -224,7 +224,7 @@ class VidProcess:
 
 if __name__ == "__main__": 
     # need to only specify k_ppt_file
-    k_ppt_file = 'SK하이닉스_K_2026-06-17_shorts_13sec'
+    k_ppt_file = '롯데에너지머티리얼즈_K_2026-06-17_shorts_13sec'
 
     vp = VidProcess(k_ppt_file)
     vp.process_K_video()

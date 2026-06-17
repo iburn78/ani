@@ -613,11 +613,11 @@ def _debugger(df):
 
 if __name__ == "__main__":
     ref_info = {'strengths': ['Focus should be in comparison with competitors (incumbents and new)'], 
-                'issues': ['may need to assess the effect of the potential ADR listing in Nasdaq to its stock performance'], 
+                'issues': ['may need to assess the effect of the potential supply to NVIDIA value chain'], 
                 'general': ['aviod using technical product names too much, rethink if people will understand easily'],
                 }
     # ref_info = None
-    code = '000660'
+    code = '020150'
     _ = CDB_MAKER(code, 'K', ref_info) #_.v_id
     _ = CDB_MAKER(code, 'E', ref_info)
     
