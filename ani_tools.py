@@ -26,9 +26,14 @@ pd_ = os.path.dirname(cd_) # ..
 GOOGLE_CLIENT = os.path.join(pd_, 'config/google_client.json')
 YOUTUBE_CONF = os.path.join(pd_, 'config/youtube_conf.json')
 GOOGLE_CLOUD = os.path.join(pd_, 'config/google_cloud.json')
-YOUTUBE_LOG = os.path.join(cd_, 'data/youtube_log.xlsx')
-
+OPENAI_CONF = os.path.join(pd_, 'config/openai_api.json')
 df_krx = pd.read_feather(os.path.join(pd_, 'trader/data_collect/data/df_krx.feather'))
+
+# create data directory
+DATA_DIR = os.path.join(cd_, 'data/')
+os.makedirs(DATA_DIR, exist_ok=True)
+
+YOUTUBE_LOG = os.path.join(DATA_DIR, 'youtube_log.xlsx')
 
 # ----------------------------------------------------------------------------------------------------
 # ChatGPT API functions, mainly getting translated text
@@ -41,8 +46,7 @@ df_krx = pd.read_feather(os.path.join(pd_, 'trader/data_collect/data/df_krx.feat
 # LLM_model = 'gemma4'
 
 # instead to use OpenAI API 
-CONF_FILE = os.path.join(pd_, 'config/openai_api.json')
-with open(CONF_FILE, 'r') as json_file:
+with open(OPENAI_CONF, 'r') as json_file:
     config = json.load(json_file)
     api_key = config['openai_api_key']
 client = OpenAI(api_key=api_key)
@@ -142,7 +146,6 @@ def get_desc(input_text, lang):
         raise Exception('Error in ChatGPT response and/or get_desc function')
 
     return res
-
 
 # ----------------------------------------------------------------------------------------------------
 # Google API and Youtube operation and interaction functions
@@ -326,7 +329,7 @@ def append_to_youtube_log(ppt_file, title, desc, keywords, id, type_of_video, lo
     df.to_excel(log_file, index=False)
 
 
-def exist_in_youtube_log(ppt_file, log_file = YOUTUBE_LOG): 
+def exist_in_youtube_log(ppt_file, log_file=YOUTUBE_LOG): 
     if os.path.exists(log_file):
         df = pd.read_excel(log_file)
     else:
@@ -334,7 +337,7 @@ def exist_in_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
     return os.path.basename(ppt_file) in df['filename'].values  # True or False
 
 
-def get_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
+def get_record_from_youtube_log(ppt_file, log_file=YOUTUBE_LOG):
     if os.path.exists(log_file):
         df = pd.read_excel(log_file)
     else:
@@ -349,7 +352,7 @@ def get_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG):
     return title, desc
 
 
-def delete_record_from_youtube_log(ppt_file, log_file = YOUTUBE_LOG): 
+def delete_record_from_youtube_log(ppt_file, log_file=YOUTUBE_LOG): 
     if os.path.exists(log_file):
         df = pd.read_excel(log_file)
     else:
@@ -422,7 +425,6 @@ def sort_files_by_date(file_list, dates_on_after=None):
     # Sort the files by date (oldest to newest)
     files_with_date.sort(key=lambda x: x[1])
     return [file[0] for file in files_with_date]
-
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -608,9 +610,6 @@ def close_ppt_if_saved(ppt_filename):
                 print(f"{ppt_filename} is not saved. Not closing.")
             return
     # print(f"{ppt_filename} is not open.")
-
-
-
 
 
 # ----------------------------------------------------------------------------------------------------

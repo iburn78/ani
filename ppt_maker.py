@@ -5,18 +5,22 @@ from pptx import Presentation
 from pptx.dml.color import RGBColor
 from PIL import Image
 import math
-from ani_tools import open_ppt_file, close_ppt_if_saved
 import re
 
 cd_ = os.path.dirname(os.path.abspath(__file__)) # .   
-WORKING_DIR = os.path.join(cd_, 'data/ppt/')
-OUTPUT_DIR = os.path.join(cd_, 'data/ppt/ppts/' )
+TEMPLATE_DIR = os.path.join(cd_, 'templates/') # should already exist
+
+DATA_DIR = os.path.join(cd_, 'data/')
+os.makedirs(DATA_DIR, exist_ok=True)
+
+PPT_DIR = os.path.join(cd_, 'data/ppt/' )
+os.makedirs(PPT_DIR, exist_ok=True)
 
 # reading a content DB, and make a ppt file for a given v_id
 # defining procedure and format within the class for a given blank template
 class PPT_MAKER:
-    BLANK_FILE_NAME = 'blank.pptx'
-    CONTENT_DB_FILENAME = 'content_db.xlsx'
+    BLANK_FILE_NAME = 'blank.pptx' # should be in TEMPLATE_DIR
+    CONTENT_DB_FILENAME = 'content_db.xlsx' # to be located in DATA_DIR (autocreated)
     CONTENT_DB_COLUMNS = ["v_id", "name", "lang", "date", "suffix", "slide", "type", "title", "subtitle", "image_path", "image", "desc", "note"] 
     CONTENT_DB_SHEETNAME = 'datasheet'
     SLIDE_TYPE = ['title', 'image', 'bullet', 'close']
@@ -59,8 +63,8 @@ class PPT_MAKER:
     INTRO_TEXTBOX_NAME = 'TextBox 2'
 
     def __init__(self, v_id=None, target_filename=None):
-        self.prs = Presentation(PPT_MAKER.get_file_path(PPT_MAKER.BLANK_FILE_NAME))
-        self.content_db = PPT_MAKER.read_content_db(PPT_MAKER.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME))
+        self.prs = Presentation(os.path.join(TEMPLATE_DIR, PPT_MAKER.BLANK_FILE_NAME))
+        self.content_db = PPT_MAKER.read_content_db(PPT_MAKER.get_content_db_path())
         if v_id == None: 
             return 
         if self.get_target_db(v_id, target_filename):
@@ -69,8 +73,8 @@ class PPT_MAKER:
         self.make_ppt()
 
     @staticmethod
-    def get_file_path(filename):
-        return os.path.join(WORKING_DIR, filename)
+    def get_content_db_path():
+        return os.path.join(DATA_DIR, PPT_MAKER.CONTENT_DB_FILENAME)
 
     @staticmethod
     def read_content_db(excel_path):
@@ -139,8 +143,7 @@ class PPT_MAKER:
             self.add_image_to_slide(slide, row)
             self.set_note(slide, row)
 
-        close_ppt_if_saved(self.target_pptx_name)
-        self.final_ppt_path_filename = os.path.join(OUTPUT_DIR, self.target_pptx_name)
+        self.final_ppt_path_filename = os.path.join(PPT_DIR, self.target_pptx_name)
         self.prs.save(self.final_ppt_path_filename)
         print("PPT save completed ---- ")
 

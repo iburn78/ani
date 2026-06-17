@@ -1,18 +1,19 @@
 #%% 
 import requests
 import json
-import os
+import os, shutil
 import re
 from bs4 import BeautifulSoup
 import pandas as pd 
 from urllib.parse import urljoin
 from ani_tools import sort_files_by_date, filter_long_files, filter_short_files, find_pptx_files, trans_list_of_K_files, filter_13sec_short_files
-from ani_tools import get_notes, ppt_to_images, YOUTUBE_LOG
+from ani_tools import get_notes, ppt_to_images, YOUTUBE_LOG, DATA_DIR
 
 pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .. 
-BASE_DIR = os.path.join(pd_, 'analysis')
-# Better to clean the slide image root directory before running...
-SLIDE_IMAGE_ROOT = os.path.join(pd_, 'analysis/temp')
+
+SLIDE_IMAGE_ROOT = os.path.join(DATA_DIR, 'temp/ist/')
+os.makedirs(SLIDE_IMAGE_ROOT, exist_ok=True)
+
 MAX_IMAGES_PER_POST = 10
 IST_SITE = 'http://10.245.110.101/'
 
@@ -208,10 +209,13 @@ class IST:  # IssueTracker Handler
     
         return lang
         
+    def _clean_up_slide_images(self):
+        shutil.rmtree(SLIDE_IMAGE_ROOT, ignore_errors=True)
+        os.makedirs(SLIDE_IMAGE_ROOT, exist_ok=True)
 
     # Script translation might be different from youtube video, as it is done separately here....
     # Batch process ppts in the target_dir and all subfolders
-    def find_ppt_tranlate_and_upload(self, target_dir, dates_on_after, conf_file):
+    def find_ppt_tranlate_and_upload(self, target_dir, dates_on_after):
         cat_K_files, cat_E_files = find_pptx_files(target_dir)
         cat_K_longs = sort_files_by_date(filter_long_files(cat_K_files), dates_on_after)
         cat_E_longs = sort_files_by_date(filter_long_files(cat_E_files), dates_on_after)
@@ -243,6 +247,8 @@ class IST:  # IssueTracker Handler
             self.upload_a_ppt_ist(f, '13')
         for f in cat_E_13secs:
             self.upload_a_ppt_ist(f, '13')
+        
+        self._clean_up_slide_images()
 
 
 if __name__ == '__main__': 
@@ -255,4 +261,4 @@ if __name__ == '__main__':
     CONF_FILE = os.path.join(pd_, 'config/ist.json') # which contains issuetracker id and password
 
     ist = IST(CONF_FILE)
-    ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER, CONF_FILE)
+    ist.find_ppt_tranlate_and_upload(PPT_WORK_DIR, DATES_ON_AFTER)

@@ -2,8 +2,9 @@
 from ani_tools import *
 from ppt2video.tools import save_ppt_as_images, ppt_tts, composite_video_from_ppt_and_voice
 
-PPT_PATH = 'data/ppt/ppts/'
-VOICE_PATH = 'data/voice/'
+PPT_PATH = os.path.join(DATA_DIR, 'ppt/')
+TEMP_VOICE_PATH = os.path.join(DATA_DIR, 'temp/voice/')
+os.makedirs(TEMP_VOICE_PATH, exist_ok=True)
 
 class VidProcess:
 
@@ -32,7 +33,7 @@ class VidProcess:
             fade_after_slide=fade_after_slide,
             speaking_rate_KR=speaking_rate_KR, 
             ppt_path = PPT_PATH,
-            voice_path= VOICE_PATH,
+            voice_path= TEMP_VOICE_PATH,
             **speaking_rate_param,
             **video_param,
             )
@@ -42,7 +43,7 @@ class VidProcess:
             fade_after_slide=fade_after_slide,
             speaking_rate_EN=speaking_rate_EN, 
             ppt_path = PPT_PATH,
-            voice_path= VOICE_PATH,
+            voice_path= TEMP_VOICE_PATH,
             **speaking_rate_param,
             **video_param,
             )
@@ -222,7 +223,8 @@ class VidProcess:
     # vp.process()
 
 if __name__ == "__main__": 
-    k_ppt_file = 'SK하이닉스_K_2026-06-16_shorts_13sec'
+    # need to only specify k_ppt_file
+    k_ppt_file = 'SK하이닉스_K_2026-06-17_shorts_13sec'
 
     vp = VidProcess(k_ppt_file)
     vp.process_K_video()

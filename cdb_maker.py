@@ -1,11 +1,13 @@
 #%% 
-from ani.PPT_Maker import PPT_MAKER, WORKING_DIR
+from ani.ppt_maker import PPT_MAKER, DATA_DIR
 from ani.ani_tools import close_excel_if_saved, script_optimizer_for_voice_reader, df_krx, client, LLM_model
 from trader.graph.drawer import Drawer
 import pandas as pd
 import os
 import textwrap
 import re
+
+TEMP_IMAGE_DIR_PATH = os.path.join(DATA_DIR, 'temp/image/')
 
 class CDB_MAKER: #content database maker
     ###### Structure of pages #######
@@ -51,11 +53,10 @@ class CDB_MAKER: #content database maker
     BIZ_COVERAGE = 2 # If multiple business segments, how many to focus
     ISSUES_COUNT = 3 # In order to change this other than 3, need to change issues slide command as well, as the response format is hard coded.
     DATA_FRESHNESS = 6 # months
-    IMAGE_DIR_PATH = 'images/'
     SUFFIX = 'shorts_13sec'
 
     def __init__(self, code=None, lang=None, reference_info=None):
-        self.content_db_path = PPT_MAKER.get_file_path(PPT_MAKER.CONTENT_DB_FILENAME)
+        self.content_db_path = PPT_MAKER.get_content_db_path()
         # read content_db, and if not exists, creates one with preset columns
         self.content_db = PPT_MAKER.read_content_db(self.content_db_path)
         self.slide_type = PPT_MAKER.SLIDE_TYPE # ['title', 'image', 'bullet', 'close']
@@ -78,7 +79,8 @@ class CDB_MAKER: #content database maker
         self.ilend = {key: {nested_key: nested_value * CDB_MAKER.INITIAL_MULTPLE for nested_key, nested_value in value.items()} for key, value in self.lend.items()}
         self.date = pd.Timestamp.now().strftime('%Y-%m-%d')
         self.suffix = CDB_MAKER.SUFFIX
-        self.image_path = os.path.join(WORKING_DIR, CDB_MAKER.IMAGE_DIR_PATH)
+        self.image_path = TEMP_IMAGE_DIR_PATH
+        os.makedirs(self.image_path, exist_ok=True)
         self.notes = []
         self.reference_info = self._ref_info_inspect(reference_info)
         self.make_target_db()
@@ -450,7 +452,7 @@ class CDB_MAKER: #content database maker
         increment_FT= (4, 0) # from ith before to jth before (0: latest quarter)
         now = pd.Timestamp.now().strftime('%m%d%H%M')
         image = f'{self.code}_{target_account}_{now}.png'
-        output_file = os.path.join(WORKING_DIR, 'images', image)
+        output_file = os.path.join(self.image_path, image)
         drawer = Drawer(
             spine_color='black', 
             label_text_color='black',
